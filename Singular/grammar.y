@@ -656,6 +656,22 @@ elemexpr:
             if (iiARROW(&$$,$1,$3)) YYERROR;
             omFree((ADDRESS)$3);
           }
+        | '(' ')'  ARROW BLOCKTOK
+           {
+             char emptyString[] = {'\0'};
+             if (iiARROWnew(&$$,emptyString,$4)) YYERROR;
+             omFree((ADDRESS)$4);
+           }
+        | '(' extendedid ')'  ARROW BLOCKTOK
+           {
+             if (iiARROWnew(&$$,$2,$5)) YYERROR;
+             omFree((ADDRESS)$5);
+           }
+        | '(' exprlist ')'  ARROW BLOCKTOK
+           {
+             if (iiARROWnew(&$$,&$2,$5)) YYERROR;
+             omFree((ADDRESS)$5);
+           }
         | '(' exprlist ')'    { $$ = $2; }
         ;
 

@@ -6501,6 +6501,82 @@ BOOLEAN iiARROW(leftv r, char* a, char *s)
   return FALSE;
 }
 
+BOOLEAN iiARROWnew(leftv r, char* parameter, char *procBody)
+{
+  char *ss=(char*)omAlloc(strlen(parameter) + strlen(procBody) + 30);
+
+  int end_s=strlen(procBody);
+  while ((end_s>0) && (procBody[end_s] <= ' ')) end_s--;
+  procBody[end_s + 1]='\0';
+
+  char *name=(char *)omAlloc(strlen(parameter) + strlen(procBody) + 30);
+  sprintf(name, "%s->%s", parameter, procBody);
+  if(strlen(parameter) == 0)
+  {
+    sprintf(ss, "%s\nreturn();", procBody);
+  }
+  else if (strlen(parameter) == 1 && parameter[0] == '#')
+  {
+    sprintf(ss, "parameter list #;%s\nreturn();", procBody);
+  }
+  else
+  {
+    sprintf(ss, "parameter def %s;%s\nreturn();", parameter, procBody);
+  }
+
+  r->Init();
+  r->data = (void *)omAlloc0Bin(procinfo_bin);
+  ((procinfo *)(r->data))->language=LANG_NONE;
+  iiInitSingularProcinfo((procinfo *)r->data,"",name,0,0);
+  ((procinfo *)r->data)->data.s.body=ss;
+  omFree(name);
+  r->rtyp=PROC_CMD;
+  return FALSE;
+}
+
+BOOLEAN iiARROWnew(leftv r, leftv parameters, char *procBody)
+{
+  int numberOfParameters = parameters->listLength();
+  int lengthOfAllParameters = 0;
+  leftv a = parameters;
+  do
+  {
+    lengthOfAllParameters += strlen(a->Name());
+    a = a->Next();
+  } while(a != NULL);
+  char *parameterString=(char *)omAlloc(lengthOfAllParameters + numberOfParameters*20);
+  parameterString[0]='\0';
+  do
+  {
+    if(strlen(parameters->Name())==1 && (parameters->Name())[0]=='#')
+    {
+      parameterString = strcat(parameterString, "parameter list ");
+    }
+    else
+    {
+      parameterString = strcat(parameterString, "parameter ");
+    }
+    parameterString = strcat(parameterString, parameters->Name());
+    parameterString = strcat(parameterString, "; ");
+    parameters = parameters->Next();
+  } while(parameters != NULL);
+
+  char *ss=(char*)omAlloc(strlen(parameterString) + strlen(procBody) + 30);
+  sprintf(ss, "%s%s\nreturn();", parameterString, procBody);
+  char *name=(char*)omAlloc(strlen(parameterString) + strlen(procBody) + 30);
+  sprintf(name, "(%s) -> {%s}", parameterString, procBody);
+
+  r->Init();
+  r->data = (void *)omAlloc0Bin(procinfo_bin);
+  ((procinfo *)(r->data))->language=LANG_NONE;
+  iiInitSingularProcinfo((procinfo *)r->data,"",name,0,0);
+  ((procinfo *)r->data)->data.s.body=ss;
+  omFree(name);
+  omFree(parameterString);
+  r->rtyp=PROC_CMD;
+  return FALSE;
+}
+
 BOOLEAN iiAssignCR(leftv r, leftv arg)
 {
   char* ring_name=omStrDup((char*)r->Name());
