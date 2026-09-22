@@ -304,7 +304,7 @@ Tim Wichmann,
 Oliver Wienand,
 Denis Yanovich
 and
-Oleksandr Yena.
+Oleksandr Iena.
 
 The development of @sc{Singular} has been supported by
     the Deutsche Forschungsgemeinschaft (DFG),

@@ -3,7 +3,7 @@ version="version involut.lib 4.1.2.0 Feb_2019 "; // $Id$
 category="Noncommutative";
 info="
 LIBRARY:  involut.lib  Computations and operations with involutions
-AUTHORS:  Oleksandr Iena,       yena@mathematik.uni-kl.de,
+AUTHORS:  Oleksandr Iena,       o.g.yena@gmail.com,
 @*        Markus Becker,        mbecker@mathematik.uni-kl.de,
 @*        Viktor Levandovskyy,  levandov@mathematik.uni-kl.de
 
@@ -395,8 +395,15 @@ static proc new_var()
 
 static proc NVAR(int i, int j)
 {
-  //  return("@_"+string(i)+"_"+string(j));
-  return("a"+string(i)+string(j));
+  // for indices up to 9 the short name is unique and easy to read;
+  // from 10 on (e.g. NVAR(1,11) and NVAR(11,1) would both give
+  // "a111") the underscore notation takes over, which is unique
+  // for arbitrary indices
+  if (i <= 9 && j <= 9)
+  {
+    return("a"+string(i)+string(j));
+  }
+  return("@_"+string(i)+"_"+string(j));
 }
 ///////////////////////////////////////////////////////////////////////////////////
 static proc new_var_special()
