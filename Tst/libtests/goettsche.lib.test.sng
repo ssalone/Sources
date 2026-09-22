@@ -1,0 +1,112 @@
+// Test suite for goettsche.lib (Drezet's formula for the Betti numbers
+// of the moduli space of vector bundles, Goettsche's formula, and
+// related generating functions).
+
+LIB "test.lib";
+LIB "goettsche.lib";
+
+TestSuite("goettsche.lib", () -> {
+
+  TestCase("GoettscheF", () -> {
+    ring r = 0, (t, z), ls;
+    // consider the projective plane with Betti numbers 1,0,1,0,1
+    list b = 1,0,1,0,1;
+    // get the Goettsche's formula up to degree 3
+    poly rez = GoettscheF(z, t, 3, b);
+    expectEqual(rez,
+      1+t+tz2+tz4+t2+2t2z2+3t2z4+2t2z6+t2z8+t3+2t3z2+5t3z4+6t3z6
+      +5t3z8+2t3z10+t3z12);
+  });
+
+  TestCase("PPolyH", () -> {
+    ring r = 0, (z), ls;
+    // consider the projective plane P_2 with Betti numbers 1,0,1,0,1
+    list b = 1,0,1,0,1;
+    // get the Poincare polynomial of the Hilbert scheme of 3 points on P_2
+    poly rez = PPolyH(z, 3, b);
+    expectEqual(rez, 1+2z2+5z4+6z6+5z8+2z10+z12);
+  });
+
+  TestCase("BettiNumsH", () -> {
+    ring r = 0, (z), ls;
+    // consider the projective plane P_2 with Betti numbers 1,0,1,0,1
+    list b = 1,0,1,0,1;
+    // get the Betti numbers of the Hilbert scheme of 3 points on P_2
+    list rez = BettiNumsH(3, b);
+    expectEqual(rez, list(1,0,2,0,5,0,6,0,5,0,2,0,1));
+  });
+
+  TestCase("NakYoshF", () -> {
+    ring r = 0, (t, z), ls;
+    // get the Nakajima-Yoshioka formula for r=1 up to degree 3, i.e.,
+    // the generating function for the Poincare polynomials of the
+    // punctual Hilbert schemes of n planar points
+    poly rez = NakYoshF(z, t, 1, 3);
+    expectEqual(rez, 1+t+t2+t2z2+t3+t3z2+t3z4);
+  });
+
+  TestCase("PPolyQp", () -> {
+    ring r = 0, (z), ls;
+    // get the Poincare polynomial of the punctual Hilbert scheme (r=1)
+    // of 3 planar points
+    poly rez = PPolyQp(z, 1, 3);
+    expectEqual(rez, 1+z2+z4);
+  });
+
+  TestCase("BettiNumsQp", () -> {
+    ring r = 0, (z), ls;
+    // get the Betti numbers of the punctual Hilbert scheme (r=1)
+    // of 3 points on a plane
+    list rez = BettiNumsQp(1, 3);
+    expectEqual(rez, list(1,0,1,0,1));
+  });
+
+  TestCase("MacdonaldF", () -> {
+    ring r = 0, (t, z), ls;
+    // consider the projective plane with Betti numbers 1,0,1,0,1
+    list b = 1,0,1,0,1;
+    // get the Macdonald's formula up to degree 3
+    poly rez = MacdonaldF(z, t, 3, b);
+    expectEqual(rez,
+      1+t+tz2+tz4+t2+t2z2+2t2z4+t2z6+t2z8+t3+t3z2+2t3z4+2t3z6
+      +2t3z8+t3z10+t3z12);
+  });
+
+  TestCase("PPolyS", () -> {
+    ring r = 0, (z), ls;
+    // consider the projective plane P_2 with Betti numbers 1,0,1,0,1
+    list b = 1,0,1,0,1;
+    // get the Poincare polynomial of the third symmetric power of P_2
+    poly rez = PPolyS(z, 3, b);
+    expectEqual(rez, 1+z2+2z4+2z6+2z8+z10+z12);
+  });
+
+  TestCase("BettiNumsS", () -> {
+    ring r = 0, (z), ls;
+    // consider a complex torus T (elliptic curve) with Betti numbers 1,2,1
+    list b = 1,2,1;
+    // get the Betti numbers of the second symmetric power of T
+    list rez = BettiNumsS(2, b);
+    expectEqual(rez, list(1,2,2,2,1));
+    // consider a projective plane P_2 with Betti numbers 1,0,1,0,1
+    b = 1,0,1,0,1;
+    // get the Betti numbers of the third symmetric power of P_2
+    rez = BettiNumsS(3, b);
+    expectEqual(rez, list(1,0,1,0,2,0,2,0,2,0,1,0,1));
+  });
+
+  TestCase("PPolyN", () -> {
+    ring r = 0, (t), ls;
+    // get the Poincare polynomial of N(3; 2, 3)
+    poly rez = PPolyN(t, 3, 2, 3);
+    expectEqual(rez, 1+t2+3t4+3t6+3t8+t10+t12);
+  });
+
+  TestCase("BettiNumsN", () -> {
+    ring r = 0, (t), dp;
+    // get the Betti numbers of N(3; 2, 3)
+    list rez = BettiNumsN(3, 2, 3);
+    expectEqual(rez, list(1,0,1,0,3,0,3,0,3,0,1,0,1));
+  });
+});
+$

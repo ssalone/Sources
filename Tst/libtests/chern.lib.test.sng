@@ -1,0 +1,865 @@
+// Test suite for chern.lib (computations with Chern classes and other
+// characteristic classes).
+
+// NOTE: chern.lib loads lrcalc.lib, whose computational procs delegate
+// to the external programs `lrcalc` and `schubmult` (needed here only
+// for chProdM and chProdMP).  Loading chern.lib works without them;
+// only the two lrcalc-dependent test cases below are guarded by an
+// availability probe.  On systems without the programs (e.g. the macOS
+// CI runners) they are simply not run instead of producing false
+// failures.
+
+LIB "test.lib";
+LIB "chern.lib";
+
+// probe: do the external programs exist and actually run?
+int lrcalcAvailable =
+  (system("sh",
+     "lrcalc coef 1 - 1 - 1 >/dev/null 2>&1 && schubmult 1 - 1 >/dev/null 2>&1")
+   == 0);
+
+TestSuite("chern.lib", () -> {
+
+  TestCase("symm", () -> {
+    // elementary symmetric functions in x, y, z:
+    ring r = 0, (x, y, z), dp;
+    list l = (x, y, z);
+    list rez = symm(l);
+    expectEqual(rez, list(x+y+z, xy+xz+yz, xyz));
+
+    // now let us compute only the first two symmetric polynomials
+    // in a(1), ..., a(10)
+    ring q = 0, (a(1..10)), dp;
+    list l = a(1..10);
+    list rez = symm(l, 2);
+    expectEqual(rez[1],
+      a(1)+a(2)+a(3)+a(4)+a(5)+a(6)+a(7)+a(8)+a(9)+a(10));
+    expectEqual(rez[2],
+      a(1)*a(2)+a(1)*a(3)+a(2)*a(3)+a(1)*a(4)+a(2)*a(4)+a(3)*a(4)
+      +a(1)*a(5)+a(2)*a(5)+a(3)*a(5)+a(4)*a(5)+a(1)*a(6)+a(2)*a(6)
+      +a(3)*a(6)+a(4)*a(6)+a(5)*a(6)+a(1)*a(7)+a(2)*a(7)+a(3)*a(7)
+      +a(4)*a(7)+a(5)*a(7)+a(6)*a(7)+a(1)*a(8)+a(2)*a(8)+a(3)*a(8)
+      +a(4)*a(8)+a(5)*a(8)+a(6)*a(8)+a(7)*a(8)+a(1)*a(9)+a(2)*a(9)
+      +a(3)*a(9)+a(4)*a(9)+a(5)*a(9)+a(6)*a(9)+a(7)*a(9)+a(8)*a(9)
+      +a(1)*a(10)+a(2)*a(10)+a(3)*a(10)+a(4)*a(10)+a(5)*a(10)+a(6)*a(10)
+      +a(7)*a(10)+a(8)*a(10)+a(9)*a(10));
+  });
+
+  TestCase("symNsym", () -> {
+    ring r = 0, (x, y, z, c(1..3)), dp;
+    list l = c(1..3);
+    // The symmetric part of f = 3x2 + 3y2 + 3z2 + 7xyz + y
+    // in terms of the elementary symmetric functions c(1), c(2), c(3)
+    // and the remainder
+    poly f = 3x2 + 3y2 + 3z2 + 7xyz + y;
+    list rez = symNsym(f, l);
+    expectEqual(rez[1], 3*c(1)^2-6*c(2)+7*c(3));
+    expectEqual(rez[2], y);
+    // Take a symmetric polynomial in variables x and z
+    f = x2+xz+z2;
+    // Express it in terms of the elementary symmetric functions
+    rez = symNsym(f, l);
+    expectEqual(rez[1], c(1)^2-c(2));
+    expectEqual(rez[2], poly(0));
+  });
+
+  TestCase("CompleteHomog", () -> {
+    ring r = 0, (x(1..3)), dp;
+    list l = x(1..3);
+    // complete homogeneous symmetric polynomials up to degree 3
+    // in variables x(1), x(2), x(3)
+    list rez = CompleteHomog(3, l);
+    expectEqual(rez, list(1, x(1), x(1)^2-x(2),
+      x(1)^3-2*x(1)*x(2)+x(3)));
+  });
+
+  TestCase("segre", () -> {
+    ring r = 0, (c(1..3)), dp;
+    list l = c(1..3);
+    // Segre classes up to degree 5 in Chern classes c(1), c(2), c(3)
+    list rez = segre(l, 5);
+    expectEqual(rez, list(-c(1), c(1)^2-c(2),
+      -c(1)^3+2*c(1)*c(2)-c(3),
+      c(1)^4-3*c(1)^2*c(2)+c(2)^2+2*c(1)*c(3),
+      -c(1)^5+4*c(1)^3*c(2)-3*c(1)*c(2)^2-3*c(1)^2*c(3)+2*c(2)*c(3)));
+  });
+
+  TestCase("chern", () -> {
+    ring r = 0, (s(1..3)), dp;
+    list l = s(1..3);
+    // Chern classes in Segre classes s(1), s(2), s(3)
+    list rez = chern(l);
+    expectEqual(rez, list(-s(1), s(1)^2-s(2), -s(1)^3+2*s(1)*s(2)-s(3)));
+    // This procedure is inverse to segre(...).  Indeed:
+    rez = segre(chern(l), 3);
+    expectEqual(rez, list(s(1), s(2), s(3)));
+  });
+
+  TestCase("chNum", () -> {
+    ring r = 0, (c(1..2)), dp;
+    list l = c(1..2);
+    // Let c(1) be a variable of degree 1, let c(2) be a variable of
+    // degree 2.  The monomials in c(1) and c(2) of weighted degree 5:
+    list rez = chNum(5, l);
+    expectEqual(rez, list(c(1)^5, c(1)^3*c(2), c(1)*c(2)^2));
+  });
+
+  TestCase("chNumbers", () -> {
+    ring r = 0, (c(1..3)), dp;
+    list l = c(1..3);
+    // The Chern numbers of a vector bundle with Chern classes
+    // c(1), c(2), c(3) on a 3-fold:
+    list rez = chNumbers(3, l);
+    expectEqual(rez, list(c(1)^3, c(1)*c(2), c(3)));
+    // If the highest Chern class is zero, the Chern numbers are:
+    l = c(1..2);
+    rez = chNumbers(3, l);
+    expectEqual(rez, list(c(1)^3, c(1)*c(2), poly(0)));
+  });
+
+  TestCase("sum_of_powers", () -> {
+    ring r = 0, (x, y, z), dp;
+    list l = x, y, z;
+    // sum of 7-th powers of x, y, z
+    poly rez = sum_of_powers(7, l);
+    expectEqual(rez, x7+y7+z7);
+  });
+
+  TestCase("powSumSym", () -> {
+    // the expressions of the first 3 sums of powers of 3 variables
+    // a(1), a(2), a(3) in terms of the elementary symmetric
+    // polynomials c(1), c(2), c(3):
+    ring r = 0, (c(1..3)), dp;
+    list l = (c(1..3));
+    list rez = powSumSym(l);
+    expectEqual(rez, list(c(1), c(1)^2-2*c(2),
+      c(1)^3-3*c(1)*c(2)+3*c(3)));
+    // The first 5 sums in the same situation
+    rez = powSumSym(l, 5);
+    expectEqual(rez, list(c(1), c(1)^2-2*c(2),
+      c(1)^3-3*c(1)*c(2)+3*c(3),
+      c(1)^4-4*c(1)^2*c(2)+2*c(2)^2+4*c(1)*c(3),
+      c(1)^5-5*c(1)^3*c(2)+5*c(1)*c(2)^2+5*c(1)^2*c(3)-5*c(2)*c(3)));
+  });
+
+  TestCase("chAll", () -> {
+    // Chern character (terms of degree 1, 2, 3)
+    // corresponding to the Chern classes c(1), c(2), c(3):
+    ring r = 0, (c(1..3)), dp;
+    list l = (c(1..3));
+    list rez = chAll(l);
+    expectEqual(rez, list(c(1), 1/2*c(1)^2-c(2),
+      1/6*c(1)^3-1/2*c(1)*c(2)+1/2*c(3)));
+    // terms up to degree 5 in the same situation
+    rez = chAll(l, 5);
+    expectEqual(rez, list(c(1), 1/2*c(1)^2-c(2),
+      1/6*c(1)^3-1/2*c(1)*c(2)+1/2*c(3),
+      1/24*c(1)^4-1/6*c(1)^2*c(2)+1/12*c(2)^2+1/6*c(1)*c(3),
+      1/120*c(1)^5-1/24*c(1)^3*c(2)+1/24*c(1)*c(2)^2
+      +1/24*c(1)^2*c(3)-1/24*c(2)*c(3)));
+  });
+
+  TestCase("chAllInv", () -> {
+    // first 3 Chern classes in terms of the first 3 terms
+    // of the Chern character ch(1), ch(2), ch(3):
+    ring r = 0, (ch(1..3)), dp;
+    list l = (ch(1..3));
+    list rez = chAllInv(l);
+    expectEqual(rez, list(ch(1), 1/2*ch(1)^2-ch(2),
+      1/6*ch(1)^3-ch(1)*ch(2)+2*ch(3)));
+    // let us see that chAllInv() is inverse to chAll()
+    rez = chAll(chAllInv(l));
+    expectEqual(rez, list(ch(1), ch(2), ch(3)));
+  });
+
+  TestCase("chHE", () -> {
+    ring r = 0, (c(1..3)), dp;
+    list l = c(1..3);
+    // the third degree term of the Chern character
+    poly rez = chHE(l);
+    expectEqual(rez, 1/6*c(1)^3-1/2*c(1)*c(2)+1/2*c(3));
+  });
+
+  TestCase("ChernRootsSum", () -> {
+    ring r = 0, (a(1..3), b(1..2)), dp;
+    // assume a(1), a(2), a(3) are the Chern roots of a vector bundle E
+    // assume b(1), b(2) are the Chern roots of a vector bundle F
+    list l = a(1..3);
+    list L = b(1..2);
+    // the Chern roots of their direct sum is
+    list rez = ChernRootsSum(l, L);
+    expectEqual(rez, list(a(1), a(2), a(3), b(1), b(2)));
+  });
+
+  TestCase("chSum", () -> {
+    ring r = 0, (c(1..3), C(1..2)), dp;
+    // Let E be a vector bundle with Chern classes c(1), c(2), c(3).
+    // Let F be a vector bundle with Chern classes C(1), C(2).
+    list l = c(1..3);
+    list L = C(1..2);
+    // Then the Chern classes of their direct sum are
+    list rez = chSum(l, L);
+    expectEqual(rez, list(c(1)+C(1), c(1)*C(1)+c(2)+C(2),
+      c(2)*C(1)+c(1)*C(2)+c(3), c(3)*C(1)+c(2)*C(2), c(3)*C(2)));
+  });
+
+  TestCase("ChernRootsDual", () -> {
+    ring r = 0, (a(1..3)), dp;
+    // assume a(1), a(2), a(3) are the Chern roots of a vector bundle
+    list l = a(1..3);
+    // the Chern roots of the dual vector bundle
+    list rez = ChernRootsDual(l);
+    expectEqual(rez, list(-a(1), -a(2), -a(3)));
+  });
+
+  TestCase("chDual", () -> {
+    // Chern classes of a vector bundle that is dual to a vector bundle
+    // with Chern classes c(1), c(2), c(3)
+    ring r = 0, (c(1..3)), dp;
+    list l = c(1..3);
+    list rez = chDual(l);
+    expectEqual(rez, list(-c(1), c(2), -c(3)));
+  });
+
+  TestCase("ChernRootsProd", () -> {
+    ring r = 0, (a(1..2), b(1..3)), dp;
+    list l = a(1..2);
+    list L = b(1..3);
+    // Chern roots of the tensor product of a vector bundle with
+    // Chern roots a(1), a(2) and a vector bundle with Chern roots
+    // b(1), b(2), b(3)
+    list rez = ChernRootsProd(l, L);
+    expectEqual(rez, list(a(1)+b(1), a(1)+b(2), a(1)+b(3),
+      a(2)+b(1), a(2)+b(2), a(2)+b(3)));
+  });
+
+  TestCase("chProd", () -> {
+    ring H = 0, (r, R, c(1..3), C(1..2)), dp;
+    // the Chern classes of the tensor product of a vector bundle E of
+    // rank 3 with Chern classes c(1), c(2), c(3) and a vector bundle F
+    // of rank 2 with Chern classes C(1) and C(2):
+    list l = c(1..3);
+    list L = C(1..2);
+    list rez = chProd(3, l, 2, L);
+    expectEqual(rez[1], 2*c(1)+3*C(1));
+    expectEqual(rez[2],
+      c(1)^2+5*c(1)*C(1)+3*C(1)^2+2*c(2)+3*C(2));
+    expectEqual(rez[3],
+      2*c(1)^2*C(1)+4*c(1)*C(1)^2+C(1)^3+2*c(1)*c(2)+4*c(2)*C(1)
+      +4*c(1)*C(2)+6*C(1)*C(2)+2*c(3));
+    expectEqual(rez[4],
+      c(1)^2*C(1)^2+c(1)*C(1)^3+3*c(1)*c(2)*C(1)+3*c(2)*C(1)^2
+      +2*c(1)^2*C(2)+6*c(1)*C(1)*C(2)+3*C(1)^2*C(2)+c(2)^2
+      +2*c(1)*c(3)+3*c(3)*C(1)+3*C(2)^2);
+    expectEqual(rez[5],
+      c(1)*c(2)*C(1)^2+c(2)*C(1)^3+2*c(1)^2*C(1)*C(2)
+      +2*c(1)*C(1)^2*C(2)+c(2)^2*C(1)+2*c(1)*c(3)*C(1)
+      +3*c(3)*C(1)^2+2*c(1)*c(2)*C(2)+2*c(1)*C(2)^2+3*C(1)*C(2)^2
+      +2*c(2)*c(3)-6*c(3)*C(2));
+    expectEqual(rez[6],
+      c(1)*c(3)*C(1)^2+c(3)*C(1)^3+c(1)*c(2)*C(1)*C(2)
+      +c(2)*C(1)^2*C(2)+c(1)^2*C(2)^2+c(1)*C(1)*C(2)^2
+      +c(2)*c(3)*C(1)+c(2)^2*C(2)-2*c(1)*c(3)*C(2)-3*c(3)*C(1)*C(2)
+      -2*c(2)*C(2)^2+C(2)^3+c(3)^2);
+    // the first two Chern classes of the tensor product
+    // of a vector bundle E of rank r with Chern classes c(1) and c(2)
+    // and a vector bundle G of rank R with Chern classes C(1) and C(2)
+    // this gives the Chern classes of a tensor product on a complex
+    // surface
+    l = c(1..2);
+    L = C(1..2);
+    rez = chProd(r, l, R, L, 2);
+    expectEqual(rez[1], R*c(1)+r*C(1));
+    expectEqual(rez[2],
+      1/2*R^2*c(1)^2+r*R*c(1)*C(1)+1/2*r^2*C(1)^2-1/2*R*c(1)^2
+      -1/2*r*C(1)^2+R*c(2)-c(1)*C(1)+r*C(2));
+  });
+
+  TestCase("chProdE", () -> {
+    ring H = 0, (c(1..3), C(1..2)), dp;
+    // the Chern classes of the tensor product of a vector bundle E of
+    // rank 3 with Chern classes c(1), c(2), c(3) and a vector bundle F
+    // of rank 2 with Chern classes C(1) and C(2):
+    list l = c(1..3);
+    list L = C(1..2);
+    list rez = chProdE(l, L);
+    expectEqual(rez[1], 2*c(1)+3*C(1));
+    expectEqual(rez[2],
+      c(1)^2+5*c(1)*C(1)+3*C(1)^2+2*c(2)+3*C(2));
+    expectEqual(rez[3],
+      2*c(1)^2*C(1)+4*c(1)*C(1)^2+C(1)^3+2*c(1)*c(2)+4*c(2)*C(1)
+      +4*c(1)*C(2)+6*C(1)*C(2)+2*c(3));
+    expectEqual(rez[4],
+      c(1)^2*C(1)^2+c(1)*C(1)^3+3*c(1)*c(2)*C(1)+3*c(2)*C(1)^2
+      +2*c(1)^2*C(2)+6*c(1)*C(1)*C(2)+3*C(1)^2*C(2)+c(2)^2
+      +2*c(1)*c(3)+3*c(3)*C(1)+3*C(2)^2);
+    expectEqual(rez[5],
+      c(1)*c(2)*C(1)^2+c(2)*C(1)^3+2*c(1)^2*C(1)*C(2)
+      +2*c(1)*C(1)^2*C(2)+c(2)^2*C(1)+2*c(1)*c(3)*C(1)
+      +3*c(3)*C(1)^2+2*c(1)*c(2)*C(2)+2*c(1)*C(2)^2+3*C(1)*C(2)^2
+      +2*c(2)*c(3)-6*c(3)*C(2));
+    expectEqual(rez[6],
+      c(1)*c(3)*C(1)^2+c(3)*C(1)^3+c(1)*c(2)*C(1)*C(2)
+      +c(2)*C(1)^2*C(2)+c(1)^2*C(2)^2+c(1)*C(1)*C(2)^2
+      +c(2)*c(3)*C(1)+c(2)^2*C(2)-2*c(1)*c(3)*C(2)-3*c(3)*C(1)*C(2)
+      -2*c(2)*C(2)^2+C(2)^3+c(3)^2);
+  });
+
+  TestCase("chProdL", () -> {
+    // The Chern classes of the tensor product of a vector bundle of
+    // rank 3 with Chern classes c(1), c(2), c(3) and a vector bundle
+    // of rank 1 with Chern class C(1)
+    ring r = 0, (c(1..3), C(1)), dp;
+    list c = c(1..3);
+    list C = C(1);
+    list rez = chProdL(3, c, 1, C);
+    expectEqual(rez, list(c(1)+3*C(1),
+      2*c(1)*C(1)+3*C(1)^2+c(2),
+      c(1)*C(1)^2+C(1)^3+c(2)*C(1)+c(3)));
+  });
+
+  TestCase("chProdLP", () -> {
+    // The total Chern class of the tensor product of a vector bundle
+    // of rank 3 with Chern classes c(1), c(2), c(3) and a vector bundle
+    // of rank 1 with Chern class C(1)
+    ring r = 0, (c(1..3), C(1)), ws(1,2,3, 1);
+    list c = c(1..3);
+    list C = C(1);
+    poly rez = chProdLP(3, c, 1, C);
+    expectEqual(rez,
+      1+c(1)+3*C(1)+c(2)+2*c(1)*C(1)+3*C(1)^2+c(3)+c(2)*C(1)
+      +c(1)*C(1)^2+C(1)^3);
+  });
+
+  if (lrcalcAvailable)
+  {
+    TestCase("chProdM", () -> {
+      // The Chern classes of the tensor product of a vector bundle of
+      // rank 3 with Chern classes c(1), c(2), c(3) and a vector bundle
+      // of rank 1 with Chern class C(1) -- computed via lrcalc
+      ring r = 0, (c(1..3), C(1)), dp;
+      list c = c(1..3);
+      list C = C(1);
+      list rez = chProdM(3, c, 1, C);
+      expectEqual(rez, list(c(1)+3*C(1),
+        2*c(1)*C(1)+3*C(1)^2+c(2),
+        c(1)*C(1)^2+C(1)^3+c(2)*C(1)+c(3)));
+    });
+
+    TestCase("chProdMP", () -> {
+      // The total Chern class of the tensor product of a vector bundle
+      // of rank 3 with Chern classes c(1), c(2), c(3) and a vector
+      // bundle of rank 1 with Chern class C(1) -- computed via lrcalc
+      ring r = 0, (c(1..3), C(1)), ws(1,2,3, 1);
+      list c = c(1..3);
+      list C = C(1);
+      poly rez = chProdMP(3, c, 1, C);
+      expectEqual(rez,
+        1+c(1)+3*C(1)+c(2)+2*c(1)*C(1)+3*C(1)^2+c(3)+c(2)*C(1)
+        +c(1)*C(1)^2+C(1)^3);
+    });
+  }
+
+  TestCase("ChernRootsHom", () -> {
+    ring r = 0, (a(1..2), b(1..3)), dp;
+    list l = a(1..2);
+    list L = b(1..3);
+    // Let E be a vector bundle with Chern roots a(1), a(2),
+    // let F be a vector bundle with Chern roots b(1), b(2), b(3).
+    // Then the Chern roots of Hom(E, F) are
+    list rez = ChernRootsHom(l, L);
+    expectEqual(rez, list(-a(1)+b(1), -a(1)+b(2), -a(1)+b(3),
+      -a(2)+b(1), -a(2)+b(2), -a(2)+b(3)));
+  });
+
+  TestCase("chHom", () -> {
+    ring H = 0, (r, R, c(1..3), C(1..2)), dp;
+    // the Chern classes of Hom(E, F) for a vector bundle E of rank 3
+    // with Chern classes c(1), c(2), c(3) and a vector bundle F of
+    // rank 2 with Chern classes C(1) and C(2):
+    list l = c(1..3);
+    list L = C(1..2);
+    list rez = chHom(3, l, 2, L);
+    expectEqual(rez[1], -2*c(1)+3*C(1));
+    expectEqual(rez[2],
+      c(1)^2-5*c(1)*C(1)+3*C(1)^2+2*c(2)+3*C(2));
+    expectEqual(rez[3],
+      2*c(1)^2*C(1)-4*c(1)*C(1)^2+C(1)^3-2*c(1)*c(2)+4*c(2)*C(1)
+      -4*c(1)*C(2)+6*C(1)*C(2)-2*c(3));
+    expectEqual(rez[4],
+      c(1)^2*C(1)^2-c(1)*C(1)^3-3*c(1)*c(2)*C(1)+3*c(2)*C(1)^2
+      +2*c(1)^2*C(2)-6*c(1)*C(1)*C(2)+3*C(1)^2*C(2)+c(2)^2
+      +2*c(1)*c(3)-3*c(3)*C(1)+3*C(2)^2);
+    expectEqual(rez[5],
+      -c(1)*c(2)*C(1)^2+c(2)*C(1)^3+2*c(1)^2*C(1)*C(2)
+      -2*c(1)*C(1)^2*C(2)+c(2)^2*C(1)+2*c(1)*c(3)*C(1)
+      -3*c(3)*C(1)^2-2*c(1)*c(2)*C(2)-2*c(1)*C(2)^2+3*C(1)*C(2)^2
+      -2*c(2)*c(3)+6*c(3)*C(2));
+    expectEqual(rez[6],
+      c(1)*c(3)*C(1)^2-c(3)*C(1)^3-c(1)*c(2)*C(1)*C(2)
+      +c(2)*C(1)^2*C(2)+c(1)^2*C(2)^2-c(1)*C(1)*C(2)^2
+      -c(2)*c(3)*C(1)+c(2)^2*C(2)-2*c(1)*c(3)*C(2)
+      +3*c(3)*C(1)*C(2)-2*c(2)*C(2)^2+C(2)^3+c(3)^2);
+    // the first two Chern classes of Hom(E, F) for a vector bundle E
+    // of rank r with Chern classes c(1) and c(2) and a vector bundle G
+    // of rank R with Chern classes C(1) and C(2)
+    l = c(1..2);
+    L = C(1..2);
+    rez = chHom(r, l, R, L, 2);
+    expectEqual(rez[1], -R*c(1)+r*C(1));
+    expectEqual(rez[2],
+      1/2*R^2*c(1)^2-r*R*c(1)*C(1)+1/2*r^2*C(1)^2-1/2*R*c(1)^2
+      -1/2*r*C(1)^2+R*c(2)+c(1)*C(1)+r*C(2));
+  });
+
+  TestCase("ChernRootsSymm", () -> {
+    ring r = 0, (a(1..3)), dp;
+    list l = a(1..3);
+    // the Chern roots of the second symmetric power of a vector bundle
+    // with Chern roots a(1), a(2), a(3)
+    list rez = ChernRootsSymm(2, l);
+    expectEqual(rez, list(2*a(1), a(1)+a(2), a(1)+a(3), 2*a(2),
+      a(2)+a(3), 2*a(3)));
+  });
+
+  TestCase("ChernRootsWedge", () -> {
+    ring r = 0, (a(1..3)), dp;
+    list l = a(1..3);
+    // the Chern roots of the second exterior power of a vector bundle
+    // with Chern roots a(1), a(2), a(3)
+    list rez = ChernRootsWedge(2, l);
+    expectEqual(rez, list(a(2)+a(3), a(1)+a(3), a(1)+a(2)));
+  });
+
+  TestCase("chSymm", () -> {
+    ring r = 0, (c(1..5)), dp;
+    list l = c(1..5);
+    // the rank and the Chern classes of the second symmetric power of
+    // a vector bundle of rank 3
+    list rez = chSymm(2, 3, l);
+    // the rank should be 6
+    expectEqual(rez[1], 6);
+    expectEqual(rez[2], list(4*c(1), 5*c(1)^2+5*c(2),
+      2*c(1)^3+11*c(1)*c(2)+7*c(3),
+      6*c(1)^2*c(2)+4*c(2)^2+14*c(1)*c(3),
+      4*c(1)*c(2)^2+8*c(1)^2*c(3)+4*c(2)*c(3),
+      8*c(1)*c(2)*c(3)-8*c(3)^2));
+    // the rank and the first 3 Chern classes
+    // of the second symmetric power of a vector bundle of rank 5
+    rez = chSymm(2, 5, l, 1, 2, 3);
+    expectEqual(rez[1], 15);
+    expectEqual(rez[2], list(6*c(1), 14*c(1)^2+7*c(2),
+      16*c(1)^3+31*c(1)*c(2)+9*c(3)));
+  });
+
+  TestCase("chSymm2L", () -> {
+    ring r = 0, (c(1..2)), dp;
+    list l = c(1..2);
+    // the Chern classes of the second symmetric power of a vector
+    // bundle of rank 2
+    list rez = chSymm2L(2, l);
+    expectEqual(rez[1], 3);
+    expectEqual(rez[2], list(3*c(1), 2*c(1)^2+4*c(2), 4*c(1)*c(2)));
+  });
+
+  TestCase("chSymm2LP", () -> {
+    ring r = 0, (c(1..2)), ws(1, 2);
+    list l = c(1..2);
+    // the total Chern class of the second symmetric power of a vector
+    // bundle of rank 2
+    poly rez = chSymm2LP(2, l);
+    expectEqual(rez, 1+3*c(1)+2*c(1)^2+4*c(2)+4*c(1)*c(2));
+  });
+
+  TestCase("chWedge", () -> {
+    ring r = 0, (c(1..5)), dp;
+    list l = c(1..5);
+    // the rank and the Chern classes of the second exterior power of a
+    // vector bundle of rank 3
+    list rez = chWedge(2, 3, l);
+    expectEqual(rez[1], 3);
+    expectEqual(rez[2], list(2*c(1), c(1)^2+c(2), c(1)*c(2)-c(3)));
+    // the rank and the first 3 Chern classes
+    // of the fourth exterior power of a vector bundle of rank 5
+    rez = chWedge(4, 5, l, 1, 2, 3);
+    expectEqual(rez[1], 5);
+    expectEqual(rez[2], list(4*c(1), 6*c(1)^2+c(2),
+      4*c(1)^3+3*c(1)*c(2)-c(3)));
+  });
+
+  TestCase("chWedge2L", () -> {
+    ring r = 0, (c(1..3)), dp;
+    list l = c(1..3);
+    // the Chern classes of the second exterior power of a vector
+    // bundle of rank 3
+    list rez = chWedge2L(3, l);
+    expectEqual(rez[1], 3);
+    expectEqual(rez[2], list(2*c(1), c(1)^2+c(2), c(1)*c(2)-c(3)));
+  });
+
+  TestCase("chWedge2LP", () -> {
+    ring r = 0, (c(1..3)), ws(1,2,3);
+    list l = c(1..3);
+    // the total Chern class of the second exterior power of a vector
+    // bundle of rank 3
+    poly rez = chWedge2LP(3, l);
+    expectEqual(rez, 1+2*c(1)+c(1)^2+c(2)+c(1)*c(2)-c(3));
+  });
+
+  TestCase("todd", () -> {
+    // the terms of the Todd class up to degree 5
+    // in terms of the Chern classes c(1), ..., c(5)
+    ring r = 0, (c(1..5)), dp;
+    list l = c(1..5);
+    list rez = todd(l);
+    expectEqual(rez, list(1/2*c(1),
+      1/12*c(1)^2+1/12*c(2),
+      1/24*c(1)*c(2),
+      -1/720*c(1)^4+1/180*c(1)^2*c(2)+1/240*c(2)^2+1/720*c(1)*c(3)
+      -1/720*c(4),
+      -1/1440*c(1)^3*c(2)+1/480*c(1)*c(2)^2+1/1440*c(1)^2*c(3)
+      -1/1440*c(1)*c(4)));
+    // in the same situation compute only first two terms
+    rez = todd(l, 2);
+    expectEqual(rez, list(1/2*c(1), 1/12*c(1)^2+1/12*c(2)));
+    // compute the first 5 terms corresponding to the Chern classes
+    // c(1), c(2)
+    l = c(1..2);
+    rez = todd(l, 5);
+    expectEqual(rez, list(1/2*c(1),
+      1/12*c(1)^2+1/12*c(2),
+      1/24*c(1)*c(2),
+      -1/720*c(1)^4+1/180*c(1)^2*c(2)+1/240*c(2)^2,
+      -1/1440*c(1)^3*c(2)+1/480*c(1)*c(2)^2));
+  });
+
+  TestCase("toddE", () -> {
+    // first 3 terms of the Todd class in terms of the Chern classes
+    // c(1), c(2), c(3)
+    ring r = 0, (c(1..3)), dp;
+    list l;
+    // first term
+    l = c(1);
+    poly rez = toddE(l);
+    expectEqual(rez, 1/2*c(1));
+    // second term
+    l = c(1..2);
+    rez = toddE(l);
+    expectEqual(rez, 1/12*c(1)^2+1/12*c(2));
+    // third term
+    l = c(1..3);
+    rez = toddE(l);
+    expectEqual(rez, 1/24*c(1)*c(2));
+  });
+
+  TestCase("Bern", () -> {
+    // first 10 Bernoulli numbers: B(0), ..., B(9)
+    ring r = 0, (t), dp;
+    list rez = Bern(9);
+    expectEqual(rez,
+      list(number(1), 1/2, 1/6, number(0), -1/30, number(0),
+        1/42, number(0), -1/30, number(0)));
+  });
+
+  TestCase("tdCf", () -> {
+    // first 5 coefficients
+    ring r = 0, (t), dp;
+    list rez = tdCf(4);
+    expectEqual(rez, list(number(1), 1/2, 1/12, number(0), -1/720));
+  });
+
+  TestCase("tdTerms", () -> {
+    ring r = 0, (t), ls;
+    // the terms of the Todd class of a line bundle with Chern root t
+    // up to degree 4
+    list rez = tdTerms(4, t);
+    expectEqual(rez, list(poly(1), 1/2t, 1/12t2, poly(0), -1/720t4));
+  });
+
+  TestCase("tdFactor", () -> {
+    // the Todd class up to degree 4
+    ring r = 0, (t), ls;
+    poly rez = tdFactor(4, t);
+    expectEqual(rez, 1+1/2t+1/12t2-1/720t4);
+  });
+
+  TestCase("cProj", () -> {
+    ring r = 0, (t), dp;
+    // the coefficients of the total Chern class of the complex
+    // projective line
+    list rez = cProj(1);
+    expectEqual(rez, list(bigint(2)));
+    // the coefficients of the total Chern class of the complex
+    // projective plane
+    rez = cProj(2);
+    expectEqual(rez, list(bigint(3), bigint(3)));
+    // the coefficients of the total Chern class of the complex
+    // projective space of dimension three
+    rez = cProj(3);
+    expectEqual(rez, list(bigint(4), bigint(6), bigint(4)));
+  });
+
+  TestCase("chProj", () -> {
+    ring r = 0, (t), dp;
+    // the coefficients of the Chern character of the complex projective
+    // line
+    list rez = chProj(1);
+    expectEqual(rez, list(number(1), number(2)));
+    // the coefficients of the Chern character of the complex projective
+    // plane
+    rez = chProj(2);
+    expectEqual(rez, list(number(2), number(3), 3/2));
+    // the coefficients of the Chern character of the complex
+    // 3-dimensional projective space
+    rez = chProj(3);
+    expectEqual(rez, list(number(3), number(4), number(2), 2/3));
+  });
+
+  TestCase("tdProj", () -> {
+    ring r = 0, (t), dp;
+    // the coefficients of the Todd class of the complex projective
+    // line
+    list rez = tdProj(1);
+    expectEqual(rez, list(poly(1), poly(1)));
+    // the coefficients of the Todd class of the complex projective
+    // plane
+    rez = tdProj(2);
+    expectEqual(rez, list(poly(1), poly(3/2), poly(1)));
+    // the coefficients of the Todd class of the complex projective
+    // 3-space
+    rez = tdProj(3);
+    expectEqual(rez, list(poly(1), poly(2), poly(11/6), poly(1)));
+  });
+
+  TestCase("eulerChProj", () -> {
+    ring h = 0, (r, c(1..3)), ws(0,1,2,3);
+    list l = c(1..3);
+    // the Euler characteristic of a vector bundle on the projective
+    // line
+    poly rez = eulerChProj(1, r, l);
+    expectEqual(rez, r+c(1));
+    // the Euler characteristic of a vector bundle on the projective
+    // plane
+    rez = eulerChProj(2, r, l);
+    expectEqual(rez, r+3/2*c(1)+1/2*c(1)^2-c(2));
+    // the Euler characteristic of a vector bundle on P_3
+    rez = eulerChProj(3, r, l);
+    expectEqual(rez,
+      r+11/6*c(1)+c(1)^2-2*c(2)+1/6*c(1)^3-1/2*c(1)*c(2)+1/2*c(3));
+    // assume now that we have a bundle framed at a subplane of P_3
+    // this implies c(1)=c(2)=0
+    l = 0, 0, c(3);
+    // the Euler characteristic is
+    rez = eulerChProj(3, r, l);
+    expectEqual(rez, r+1/2*c(3));
+    // which implies that c(3) must be even in this case
+  });
+
+  TestCase("chNumbersProj", () -> {
+    ring h = 0, (t), dp;
+    // The Chern numbers of the projective plane P_2:
+    list rez = chNumbersProj(2);
+    expectEqual(rez, list(bigint(9), poly(3)));
+    // The Chern numbers of P_3:
+    rez = chNumbersProj(3);
+    expectEqual(rez, list(bigint(64), poly(24), poly(4)));
+  });
+
+  TestCase("classpoly", () -> {
+    ring r = 0, (c(1..5), t), ds;
+    list l = c(1..5);
+    // get the polynomial c(1)*t + c(2)*t^2 + ... + c(5)*t^5
+    poly rez = classpoly(l, t);
+    expectEqual(rez, c(1)*t+c(2)*t^2+c(3)*t^3+c(4)*t^4+c(5)*t^5);
+  });
+
+  TestCase("chernPoly", () -> {
+    ring r = 0, (c(1..5), t), ds;
+    list l = c(1..5);
+    // get the Chern polynomial 1 + c(1)*t + ... + c(5)*t^5
+    poly rez = chernPoly(l, t);
+    expectEqual(rez,
+      1+c(1)*t+c(2)*t^2+c(3)*t^3+c(4)*t^4+c(5)*t^5);
+  });
+
+  TestCase("chernCharPoly", () -> {
+    ring h = 0, (r, ch(1..5), t), ds;
+    list l = ch(1..5);
+    // get the polynomial r + ch(1)*t + ... + ch(5)*t^5
+    poly rez = chernCharPoly(r, l, t);
+    expectEqual(rez,
+      r+ch(1)*t+ch(2)*t^2+ch(3)*t^3+ch(4)*t^4+ch(5)*t^5);
+  });
+
+  TestCase("toddPoly", () -> {
+    ring r = 0, (td(1..5), c(1..5), t), ds;
+    list l = td(1..5);
+    // get the polynomial 1 + td(1)*t + ... + td(5)*t^5
+    poly rez = toddPoly(l, t);
+    expectEqual(rez,
+      1+td(1)*t+td(2)*t^2+td(3)*t^3+td(4)*t^4+td(5)*t^5);
+  });
+
+  TestCase("rHRR", () -> {
+    ring r = 0, (td(0..3), ch(0..3)), dp;
+    // Let ch(0), ..., ch(3) be the terms of the Chern character
+    // of a vector bundle E on a 3-fold X.
+    list c = ch(0..3);
+    // Let td(0), ..., td(3) be the terms of the Todd class of X.
+    list t = td(0..3);
+    // Then the highest term of the product ch(E).td(X) is:
+    poly rez = rHRR(3, c, t);
+    expectEqual(rez,
+      td(3)*ch(0)+td(2)*ch(1)+td(1)*ch(2)+td(0)*ch(3));
+  });
+
+  TestCase("SchurS", () -> {
+    // The Schur polynomial corresponding to the partition 1,2,4
+    // and the Segre classes 1, s(1), s(2), ..., s(6)
+    ring r = 0, (s(1..6)), dp;
+    list I = 1, 2, 4;
+    list S = s(1..6);
+    poly rez = SchurS(I, S);
+    expectEqual(rez,
+      s(1)*s(2)*s(4)-s(1)^2*s(5)-s(3)*s(4)+s(1)*s(6));
+    // compare this with the Schur polynomial computed using Chern
+    // classes
+    list C = chDual(chern(S));
+    rez = SchurCh(I, C);
+    expectEqual(rez,
+      s(1)*s(2)*s(4)-s(1)^2*s(5)-s(3)*s(4)+s(1)*s(6));
+  });
+
+  TestCase("SchurCh", () -> {
+    // The Schur polynomial corresponding to the partition 1,2,4
+    // and the Chern classes c(1), c(2), c(3)
+    ring r = 0, (c(1..3)), dp;
+    list I = 1, 2, 4;
+    list C = c(1..3);
+    poly rez = SchurCh(I, C);
+    expectEqual(rez, c(1)^2*c(2)*c(3)-c(2)^2*c(3)-c(1)*c(3)^2);
+    // Compare this with the Schur polynomial computed using Segre
+    // classes
+    list S = segre(chDual(list(c(1..3))), 6);
+    rez = SchurS(I, S);
+    expectEqual(rez, c(1)^2*c(2)*c(3)-c(2)^2*c(3)-c(1)*c(3)^2);
+  });
+
+  TestCase("part", () -> {
+    // partitions into 3 summands of numbers not exceeding 1
+    list rez = part(3, 1);
+    expectEqual(rez, list(list(0,0,0), list(0,0,1), list(0,1,1),
+      list(1,1,1)));
+  });
+
+  TestCase("dualPart", () -> {
+    // dual partition to (1, 3, 4):
+    list I = 1, 3, 4;
+    list rez = dualPart(I);
+    expectEqual(rez, list(1, 2, 2, 3));
+  });
+
+  TestCase("PartC", () -> {
+    // Complement of the partition (1, 3, 4) with respect to 5
+    list I = 1, 3, 4;
+    list rez = PartC(I, 5);
+    expectEqual(rez, list(1, 2, 4));
+  });
+
+  TestCase("partOver", () -> {
+    // Partitions over the partition (3, 3, 4) with summands not
+    // exceeding 4
+    list I = 3, 3, 4;
+    list rez = partOver(4, I);
+    expectEqual(rez, list(list(3,3,4), list(3,4,4), list(4,4,4)));
+  });
+
+  TestCase("partUnder", () -> {
+    // Partitions under the partition (0, 1, 1)
+    list I = 0, 1, 1;
+    list rez = partUnder(I);
+    expectEqual(rez, list(list(0,0,0), list(0,0,1), list(0,1,1)));
+  });
+
+  TestCase("SegreA", () -> {
+    // Consider a 3-dimensional projective space
+    ring r = 0, (x, y, z, w), dp;
+    // Consider 3 non-coplanar lines through one point and compute the
+    // Segre class
+    ideal I = xy, xz, yz;
+    list rez = SegreA(I);
+    expectEqual(rez, list(0, 0, 3, -10));
+    // Now consider 3 coplanar lines through one point and its Segre
+    // class
+    ideal J = w, x*y*(x+y);
+    rez = SegreA(J);
+    expectEqual(rez, list(0, 0, 3, -12));
+  });
+
+  TestCase("FultonA", () -> {
+    // Consider a 3-dimensional projective space
+    ring r = 0, (x, y, z, w), dp;
+    // Consider 3 non-coplanar lines through one point and compute the
+    // Fulton class
+    ideal I = xy, xz, yz;
+    list rez = FultonA(I);
+    expectEqual(rez, list(0, 0, 3, 2));
+    // Now consider 3 coplanar lines through one point and its Fulton
+    // class
+    ideal J = w, x*y*(x+y);
+    rez = FultonA(J);
+    expectEqual(rez, list(0, 0, 3, 0));
+  });
+
+  TestCase("CSMA", () -> {
+    // consider the projective plane with homogeneous coordinates x, y,
+    // z
+    ring r = 0, (x, y, z), dp;
+    // the Chern-Schwartz-MacPherson class of a smooth cubic:
+    ideal I = x3+y3+z3;
+    list rez = CSMA(I);
+    expectEqual(rez, list(bigint(0), bigint(3), bigint(0)));
+    // the Chern-Schwartz-MacPherson class of singular cubic
+    // that is a union of 3 non-collinear lines:
+    ideal J = x*y*z;
+    rez = CSMA(J);
+    expectEqual(rez, list(bigint(0), bigint(3), bigint(3)));
+    // the Chern-Schwartz-MacPherson class of singular cubic
+    // that is a union of 3 lines passing through one point
+    ideal K = x*y*(x+y);
+    rez = CSMA(K);
+    expectEqual(rez, list(bigint(0), bigint(3), bigint(4)));
+  });
+
+  TestCase("EulerAff", () -> {
+    ring r = 0, (x, y), dp;
+    // compute the Euler characteristic of the affine elliptic curve
+    // y^2 = x^3+x+1
+    ideal I = y2-x3-x-1;
+    expectEqual(EulerAff(I), bigint(-1));
+  });
+
+  TestCase("EulerAffBugFix", () -> {
+    ring r = 0, (a, b, c, d), dp;
+    // compute the Euler characteristic of the affine curve
+    // a3+b3+c3+d3+2*b*d = 0
+    ideal I = a3+b3+c3+d3+2*b*d;
+    expectEqual(EulerAff(I), bigint(-11));
+  });
+
+  TestCase("EulerProj", () -> {
+    // consider the projective plane with homogeneous coordinates x, y,
+    // z
+    ring r = 0, (x, y, z), dp;
+    // Euler characteristic of a smooth cubic:
+    ideal I = x3+y3+z3;
+    expectEqual(EulerProj(I), bigint(0));
+    // Euler characteristic of 3 non-collinear lines:
+    ideal J = x*y*z;
+    expectEqual(EulerProj(J), bigint(3));
+    // Euler characteristic of 3 lines passing through one point
+    ideal K = x*y*(x+y);
+    expectEqual(EulerProj(K), bigint(4));
+  });
+});
+$

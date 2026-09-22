@@ -7,9 +7,11 @@ _config.h.in
 *.[oa]
 *.d
 *.dd
+*.ctrf.json
 *.exe
 *.gcda
 *.gcno
+*.junit.xml
 *.la
 *.lo
 *.o_ndebug

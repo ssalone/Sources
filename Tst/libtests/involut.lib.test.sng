@@ -1,0 +1,216 @@
+// Test suite for involut.lib, computations and operations with
+// involutions (anti-automorphisms of order 2) of noncommutative
+// algebras.  Run it like any Singular script, e.g.
+//   Singular involut.lib.test.sng
+LIB "test.lib";
+LIB "involut.lib";
+
+// helper: check that all entries of a matrix vanish
+proc isZeroMatrix(matrix M)
+{
+  return(size(simplify(ideal(M), 2)) == 0);
+}
+
+TestSuite("involut.lib", () -> {
+
+  TestCase("ncdetectionWeyl", () -> {
+    // classical involution on a Weyl-like algebra with three
+    // differential operators: x -> x, D(i) -> -D(i)
+    ring R1 = 0,(x,y,z,D(1..3)),dp;
+    matrix D[6][6];
+    D[1,4]=1; D[2,5]=1; D[3,6]=1;
+    def r1 = nc_algebra(1,D); setring r1;
+    ideal I1 = ncdetection();
+    expectEqual(size(I1), 6);
+    expectEqual(I1[1], x);
+    expectEqual(I1[2], y);
+    expectEqual(I1[3], z);
+    expectEqual(I1[4], -D(1));
+    expectEqual(I1[5], -D(2));
+    expectEqual(I1[6], -D(3));
+  });
+
+  TestCase("ncdetectionShift", () -> {
+    // the shift algebra: the involution sends x -> -x, S -> S
+    ring R2 = 0,(x,S),dp;
+    def r2 = nc_algebra(1,-S); setring r2;
+    ideal I2 = ncdetection();
+    expectEqual(size(I2), 2);
+    expectEqual(I2[1], -x);
+    expectEqual(I2[2], S);
+  });
+
+  TestCase("isAntiEndoWeyl", () -> {
+    // x -> x, d -> -d is the classical anti-automorphism of the
+    // first Weyl algebra; the Fourier swap (x,d) -> (d,x) is one too
+    ring W = 0,(x,d),dp;
+    def w = nc_algebra(1,1); setring w;
+    map F = w,x,-d;
+    expectEqual(isAntiEndo(F), 1);
+    map K = w,d,x;
+    expectEqual(isAntiEndo(K), 1);
+  });
+
+  TestCase("isAntiEndoUsl2", () -> {
+    // on U(sl2): I = (-e,-f,-h) is an antiautomorphism,
+    // J = (3e, f/3, -h) is an antiautomorphism, but not an involution,
+    // K = (f,e,-h) is not an antiautomorphism at all
+    def A = makeUsl(2); setring A;
+    map I = A,-e,-f,-h;
+    expectEqual(isAntiEndo(I), 1);
+    map J = A,3*e,1/3*f,-h;
+    expectEqual(isAntiEndo(J), 1);
+    map K = A,f,e,-h;
+    expectEqual(isAntiEndo(K), 0);
+  });
+
+  TestCase("isInvolutionWeyl", () -> {
+    // both x -> x, d -> -d and the Fourier swap (x,d) -> (d,x)
+    // are involutions of the first Weyl algebra
+    ring W = 0,(x,d),dp;
+    def w = nc_algebra(1,1); setring w;
+    map F = w,x,-d;
+    expectEqual(isInvolution(F), 1);
+    map K = w,d,x;
+    expectEqual(isInvolution(K), 1);
+  });
+
+  TestCase("isInvolutionUsl2", () -> {
+    // on U(sl2): I = (-e,-f,-h) is an involution,
+    // J = (3e, f/3, -h) is an antiautomorphism but not an involution,
+    // K = (f,e,-h) is not an antiautomorphism, hence no involution
+    def A = makeUsl(2); setring A;
+    map I = A,-e,-f,-h;
+    expectEqual(isInvolution(I), 1);
+    map J = A,3*e,1/3*f,-h;
+    expectEqual(isInvolution(J), 0);
+    map K = A,f,e,-h;
+    expectEqual(isInvolution(K), 0);
+  });
+
+  TestCase("involutionPoly", () -> {
+    // applying the involution twice to a polynomial returns it;
+    // for the map x -> x, d -> -d the odd powers of d flip sign
+    ring W = 0,(x,d),dp;
+    def w = nc_algebra(1,1); setring w;
+    map F = w,x,-d;
+    poly f = x*d^2+d;
+    expectEqual(involution(f,F), f);
+    poly g = x^2*d+2*x*d+3*x+7*d;
+    poly tg = -d*x^2-2*d*x+3*x-7*d;
+    expectEqual(involution(g,F), tg);
+  });
+
+  TestCase("involutionIdealModule", () -> {
+    // the involution acts on ideals and modules componentwise
+    // and is an involution there as well
+    ring W = 0,(x,d),dp;
+    def w = nc_algebra(1,1); setring w;
+    map F = w,x,-d;
+    poly f = x*d^2+d;
+    poly g = x^2*d+2*x*d+3*x+7*d;
+    ideal I = f,g;
+    ideal II = involution(I,F);
+    // applying the involution twice gives the identity on ideals
+    expectEqual(isZeroMatrix(matrix(I) - involution(II,F)), 1);
+    module M = [f,g,0],[g,0,x^2*d];
+    module IM = involution(M,F);
+    // ... and on modules
+    expectEqual(isZeroMatrix(matrix(M) - involution(IM,F)), 1);
+  });
+
+  TestCase("findInvoWeyl", () -> {
+    // all linear involutions of the first Weyl algebra form a single
+    // 3-parameter family with coefficient matrix
+    //   [ -a22  a12 ]
+    //   [  a21  a22 ]
+    def a = makeWeyl(1); setring a;
+    def X = findInvo();
+    setring X;
+    expectEqual(size(L), 1);
+    expectEqual(L[1][2][1,1], -a22);
+    expectEqual(L[1][2][1,2], a12);
+    expectEqual(L[1][2][2,1], a21);
+    expectEqual(L[1][2][2,2], a22);
+  });
+
+  TestCase("findInvoDiagWeyl", () -> {
+    // the two homothetic involutions of the first Weyl algebra are
+    // diag(-1, 1) and diag(1, -1)
+    def a = makeWeyl(1); setring a;
+    def X = findInvoDiag();
+    setring X;
+    expectEqual(size(L), 2);
+    // both matrices are constant and diagonal:
+    // diag(-1, 1) and diag(1, -1)
+    expectEqual(L[1][2][1,1], poly(-1));
+    expectEqual(L[1][2][1,2], poly(0));
+    expectEqual(L[1][2][2,1], poly(0));
+    expectEqual(L[1][2][2,2], poly(1));
+    expectEqual(L[2][2][1,1], poly(1));
+    expectEqual(L[2][2][1,2], poly(0));
+    expectEqual(L[2][2][2,1], poly(0));
+    expectEqual(L[2][2][2,2], poly(-1));
+  });
+
+  TestCase("findAutoWeyl", () -> {
+    // the linear automorphisms of order 2 of the first Weyl algebra
+    // are the identity and its negative
+    def a = makeWeyl(1); setring a;
+    def X = findAuto(2);
+    setring X;
+    expectEqual(size(L), 2);
+    // both matrices are constant and diagonal:
+    // the identity and its negative
+    expectEqual(L[1][2][1,1], poly(1));
+    expectEqual(L[1][2][1,2], poly(0));
+    expectEqual(L[1][2][2,1], poly(0));
+    expectEqual(L[1][2][2,2], poly(1));
+    expectEqual(L[2][2][1,1], poly(-1));
+    expectEqual(L[2][2][1,2], poly(0));
+    expectEqual(L[2][2][2,1], poly(0));
+    expectEqual(L[2][2][2,2], poly(-1));
+  });
+
+  TestCase("findAutoShift", () -> {
+    // all linear automorphisms of the shift algebra form a single
+    // parametrized family
+    //   [ 1  a12 ]
+    //   [ 0  @p  ],  @p a nonzero parameter
+    ring R = 0,(x,s),dp;
+    def r = nc_algebra(1,s); setring r;
+    def Y = findAuto(0);
+    setring Y;
+    expectEqual(size(L), 1);
+    expectEqual(L[1][2][1,1], poly(1));
+    expectEqual(L[1][2][1,2], a12);
+    expectEqual(L[1][2][2,1], poly(0));
+    expectEqual(L[1][2][2,2], poly(@p));
+  });
+
+  TestCase("namingBeyondNineVariables", () -> {
+    // coefficient names a_ij are unique only for i,j <= 9; from
+    // the 10th variable on the unambiguous @_i_j notation takes
+    // over (e.g. NVAR(1,11) and NVAR(11,1) would both be "a111").
+    // The 11th Weyl-like pair here is computationally harmless,
+    // since findInvoDiag introduces only one unknown per variable.
+    ring R = 0,(x(1..11)),dp;
+    matrix M[11][11];
+    M[1,2] = 1;              // x2*x1 = x1*x2 + 1, all else commutes
+    def r = nc_algebra(1,M); setring r;
+    def Y = findInvoDiag();
+    setring Y;
+    // hybrid naming: short names up to 9, underscores from 10 on
+    expectEqual(varstr(basering),
+                "a11,a22,a33,a44,a55,a66,a77,a88,a99,@_10_10,@_11_11");
+    expectEqual(size(L), 1024);         // 2^10 independent sign choices
+    // the first component is the classical involution of the
+    // Weyl pair, extended by the identity:
+    expectEqual(L[1][2][1,1], poly(-1));
+    expectEqual(L[1][2][2,2], poly(1));
+    expectEqual(L[1][2][3,3], poly(1));
+    expectEqual(L[1][2][11,11], poly(1));
+  });
+});
+$
+

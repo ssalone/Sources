@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////
-version="version lrcalc.lib 4.1.2.0 Feb_2019 ";   //$Id$
+version="version lrcalc.lib 4.4.1.0 Sep_2026 ";   //$Id$
 category="Littlewood-Richardson coefficients";
 info="
 LIBRARY:  lrcalc.lib    An interface to the Littlewood-Richardson Calculator by Anders Buch
@@ -35,14 +35,17 @@ proc LRinstall()
 RETURN:   int (exit status of the shell)
 PURPOSE:  installs the Littlewood-Richardson Calculator
 EXAMPLE:  example LRinstall; shows an example
-NOTE:
+NOTE:     the final ldconfig refreshes the dynamic linker cache;
+          without it the installed programs may fail to find
+          liblrcalc.so.1 (which is installed into /usr/local/lib)
 "
 {
   int i;
   string s;
-  s = "wget math.rutgers.edu/~asbuch/lrcalc/lrcalc-1.2.tar.gz";
-  s = s + " && tar zxvf lrcalc-1.2.tar.gz && cd lrcalc-1.2";
+  s = "wget math.rutgers.edu/~asbuch/lrcalc/lrcalc-2.1.tar.gz";
+  s = s + " && tar zxvf lrcalc-2.1.tar.gz && cd lrcalc-2.1";
   s = s + " && ./configure && make && sudo make install";
+  s = s + " && sudo ldconfig";
   i=system("sh", s);
   return(i);
 }
@@ -52,12 +55,13 @@ example
   // In order to install the Littlewood-Richardson Calculator
   // type "LRinstall();"
   // This will execute the following commands:
-  // wget math.rutgers.edu/~asbuch/lrcalc/lrcalc-1.2.tar.gz
-  // tar zxvf lrcalc-1.2.tar.gz
-  // cd lrcalc-1.2
+  // wget math.rutgers.edu/~asbuch/lrcalc/lrcalc-2.1.tar.gz
+  // tar zxvf lrcalc-2.1.tar.gz
+  // cd lrcalc-2.1
   // ./configure
   // make
   // sudo make install
+  // sudo ldconfig
 }
 //----------------------------------------------------------
 
