@@ -1,0 +1,988 @@
+////////////////////////////////////////////////////////////////
+version = "version test.lib 0.4 Sep_2026 ";      //$Id$
+category = "Testing Singular Code";
+info="
+LIBRARY:  test.lib    Toolbox for testing code writen in Singular language
+
+AUTHOR:  Oleksandr Iena,      o.g.yena@gmail.com
+
+OVERVIEW:
+  A testing library for Singular code.
+
+PROCEDURES:
+    TestSuite(name, body [, params]);       test suite: wrapper for Test cases
+    xTestSuite(name, body [, params]);      test suite whose body is skipped
+    TestCase(name, body [, params]);        test case
+    xTestCase(name, body [, params]);       test case whose body is skipped
+    expectEqual(a, b);                      equality assertion
+    expectComparedBy(a, b, comparator);     comparison with custom comparator
+    equal(a, b);                            equality
+";
+
+proc TestSuite(string suiteName, proc body, list #)
+"USAGE: TestSuite(suiteName, body, [#]);  suiteName string, body proc
+        (intended use as anonimous function or lambda ()-> {...}),
+        # optional parameters
+RETURN: none
+PURPOSE:  wrapper for a test suite
+EXAMPLE:  example TestSuite; shows an example
+NOTE: the test cases should be included in the body;
+      prepend 'x' to the name (xTestSuite) in order to skip the suite
+"
+{
+  if(!flagsInitialized())
+  {
+    initFlags();
+  }
+  runBody(body, #);
+  printTestSuiteMessage(suiteName);
+  list report = suiteName, testSuiteResult, TestSuiteReport;
+  resetSuiteFlags();
+  createCtrfFile(report, suiteName+".ctrf.json");
+}
+example
+{
+"EXAMPLE:";
+"TestSuite(\"Example Test Suite\", args -> {
+  TestCase(\"Example Test Case\", args -> {
+    ring r = 0, x, dp;
+    poly f = x^3+x+1;
+
+    expectEqual(deg(f), 3);
+  });
+   TestCase(\"Example Test Case with custom comparator\", args -> {
+      ring r = 0, x, dp;
+      poly f = x^3+x+1;
+
+      proc customComparator(int a, int b)
+      {
+        return(a < b);
+      }
+      expectComparedBy(deg(f), 5, customComparator);
+    });
+});";
+TestSuite("Example Test Suite", args -> {
+  TestCase("Example Test Case", args -> {
+    ring r = 0, x, dp;
+    poly f = x^3+x+1;
+
+    expectEqual(deg(f), 3);
+  });
+
+  TestCase("Example Test Case with custom comparator", args -> {
+    ring r = 0, x, dp;
+    poly f = x^3+x+1;
+
+    proc customComparator(int a, int b)
+    {
+      return(a < b);
+    }
+    expectComparedBy(deg(f), 5, customComparator);
+  });
+});
+}
+
+proc xTestSuite(string suiteName, proc body, list #)
+"USAGE: xTestSuite(suiteName, body, [#]);  suiteName string, body proc
+         (intended use as anonimous function or lambda ()-> {...}),
+         # optional parameters
+RETURN: none
+PURPOSE:  wrapper for a test suite whose body is skipped
+EXAMPLE:  example xTestSuite; shows an example
+NOTE: the 'x' prefix is the skip marker: the body is not executed,
+      hence no test case inside it is run; the suite is reported as
+      skipped on the console and as a single skipped entry in the
+      CTRF report; it does not affect the verdict of any other
+      suite; remove the 'x' in order to run the suite again
+"
+{
+  if(!flagsInitialized())
+  {
+    initFlags();
+  }
+  // the body is intentionally not executed
+  string skipMessage = messageOnSuiteSkip(suiteName);
+  print(newline + skipMessage);
+  TestSuiteReport = list(list(suiteName, 2, skipMessage));
+  list report = suiteName, testSuiteResult, TestSuiteReport;
+  resetSuiteFlags();
+  createCtrfFile(report, suiteName+".ctrf.json");
+}
+example
+{
+  "EXAMPLE:";
+  "xTestSuite(\"Skipped Example Test Suite\", () -> {
+  TestCase(\"never executed\", () -> {
+    expectEqual(1, 1);
+  });
+});";
+  xTestSuite("Skipped Example Test Suite", () -> {
+    TestCase("never executed", () -> {
+      expectEqual(1, 1);
+    });
+  });
+}
+
+proc TestCase(string testName, proc body, list #)
+"USAGE: TestCase(testName, body, [#]);  testName string, body proc
+        (intended use as anonimous function or lambda ()-> {...}),
+        # optional parameters
+RETURN: none
+PURPOSE:  wrapper for a test case
+EXAMPLE:  example TestCase; shows an example
+NOTE: must be used inside the body of a TestSuite;
+      unlike in former versions, the body need not return its name;
+      prepend 'x' to the name (xTestCase) in order to skip the test case
+"
+{
+  runBody(body, #);
+  "done with " + testName;
+  appendSuiteMessage(testName);
+  TestCaseReport=testName, testResult, testReport(testName);
+  resetTestFlags();
+}
+example
+{
+  "EXAMPLE:";
+  "See the example of xTestSuite. Type 'example xTestSuite;'";
+}
+
+proc xTestCase(string testName, proc body, list #)
+"USAGE: xTestCase(testName, body, [#]);  testName string, body proc
+         (intended use as anonimous function or lambda ()-> {...}),
+         # optional parameters
+RETURN: none
+PURPOSE:  wrapper for a test case whose body is skipped
+EXAMPLE:  example xTestCase; shows an example
+NOTE: the 'x' prefix is the skip marker: the body is not executed,
+      the test case is reported as skipped and does not affect the
+      suite verdict; internally, a skipped test case is flagged by
+      testResult = 2 (1 means passed, 0 means failed);
+      remove the 'x' in order to run the test case again
+"
+{
+  // the body is intentionally not executed
+  testResult = 2;
+  "skipped " + testName;
+  appendSuiteMessage(testName);
+  TestCaseReport=testName, testResult, testReport(testName);
+  resetTestFlags();
+}
+example
+{
+  "EXAMPLE:";
+  "See the example of xTestSuite. Type 'example xTestSuite;'";
+}
+
+proc expectEqual (a, b)
+"USAGE: expectEqual(a, b);  a anything, b anything
+RETURN: none
+PURPOSE:  assertion that a and b are equal
+EXAMPLE:  example expectEqual; shows an example
+NOTE: must be used inside the body of TestCase
+"
+{
+  if(!equal(a,b))
+  {
+    testResult = 0;
+    Message = Message + newline + messageOnEqualFail(a, b);
+  }
+}
+example
+{
+  "EXAMPLE:";
+  "See the example of TestSuite. Type 'example TestSuite;'";
+}
+
+proc expectComparedBy(a, b, proc comparator)
+"USAGE: expectComparedBy(a, b, comparator);  a anything, b anything,
+        comparator procedure that compares a and b
+RETURN: none
+PURPOSE:  assertion that comparator(a, b) is true
+EXAMPLE:  example expectComparedBy; shows an example
+NOTE: must be used inside the body of TestCase
+"
+{
+  if(!comparator(a, b))
+  {
+    testResult = 0;
+    Message = Message + newline + messageOnComparedByFail(a, b, nameOfProc(comparator));
+  }
+}
+example
+{
+  "EXAMPLE:";
+  "See the example of TestSuite. Type 'example TestSuite;'";
+}
+
+proc equal(a, b)
+"USAGE: equal(a, b);  a anything, b anything
+RETURN: int, 0 if a and b are not equal, otherwise a non-zero integer
+PURPOSE:  check whether a and b are equal
+EXAMPLE:  example equal; shows an example
+NOTE: for complex types like ideal currently checks only the generators equality
+"
+{
+  if ( typeof(a) != typeof(b) )
+  {
+    return(0);
+  };
+  string typeName = typeof(a);
+  if(typeName == "list")
+  {
+    return(equalList(a, b));
+  }
+  if(typeName == "ring")
+  {
+    return(print(a, "%s")==print(b, "%s"));
+  }
+  if(typeName == "ideal")
+  {
+    return(equalIdeal(a, b));
+  }
+  if(typeName == "module")
+  {
+    return(equalModule(a, b));
+  }
+  if(typeName == "arr")
+  {
+    return(equalArr(a, b));
+  }
+  if(typeName == "multarr")
+  {
+    return(equalMultArr(a, b));
+  }
+  if(typeName == "arrflats")
+  {
+    return(equalArrFlats(a, b));
+  }
+  if(typeName == "arrposet")
+  {
+    return(equalArrPoset(a, b));
+  }
+  if(typeName == "flat")
+  {
+    return(equalFlat(a, b));
+  }
+  if(typeName == "singseries")
+  {
+    return(equalSingSeries(a, b));
+  }
+  if(typeName == "singclass")
+  {
+    return(equalSingClass(a, b));
+  }
+
+  // TODO: another types where == is not supported
+  return(a==b);
+}
+example
+{
+  "EXAMPLE:"; echo = 2;
+  // 1 and 1 are equal
+  equal(1, 1);
+
+  // but 1 and 2 are not equal
+  equal(1, 2);
+}
+
+////////////////////////////////////////////////////////////////
+// static procedures (internal helpers)
+////////////////////////////////////////////////////////////////
+
+static proc nameOfProc(proc procedure)
+"USAGE: nameOfProc(procedure);  procedure proc
+RETURN: string;  the name of the given procedure
+PURPOSE:  extracts the procedure name from its printed
+          representation
+NOTE: static helper
+"
+{
+   string printOutput = print(procedure);
+   int sz = size(printOutput);
+   int positionProcName = find(printOutput, "procname : " ) + size("procname : ");
+   int positionNextLine = find(printOutput, "//", positionProcName)-2;
+   string result = printOutput[positionProcName .. positionNextLine];
+   return(result);
+}
+
+static proc messageOnComparedByFail(a, b, string comparatorName)
+"USAGE: messageOnComparedByFail(a, b, comparatorName);
+         a anything, b anything, comparatorName string
+RETURN: string;  the failure message for expectComparedBy
+NOTE: static helper for expectComparedBy
+"
+{
+  return("* failed while comparing " +
+  string(typeof(a), newline, print(a), newline, "and ", typeof(b), newline, print(b), newline, "by '", comparatorName, "'", newline));
+}
+
+static proc messageOnEqualFail(a, b)
+"USAGE: messageOnEqualFail(a, b);  a anything, b anything
+RETURN: string;  the failure message for expectEqual
+NOTE: static helper for expectEqual
+"
+{
+  return("* failed while expecting " + string(typeof(a), newline, print(a), newline + newline, "to equal ", typeof(b), newline, print(b), newline));
+}
+
+static proc equalSingClass(singclass a, singclass b)
+"USAGE: equalSingClass(a, b);  a singclass, b singclass
+RETURN: int;  1 if the singclass records are equal, 0 otherwise
+PURPOSE:  component-wise comparison of two singclass records
+NOTE: static helper for equal
+"
+{
+  if(!equalStringsArnoldClassify(a.Restrictions, b.Restrictions))
+  {
+    return(0);
+  }
+  if(!equalStringsArnoldClassify(a.NormalForm, b.NormalForm))
+  {
+    return(0);
+  }
+  if(a.MilnorCode != b.MilnorCode)
+  {
+    return(0);
+  }
+  if(a.Tjurina != b.Tjurina)
+  {
+    return(0);
+  }
+  if(a.Determinacy != b.Determinacy)
+  {
+    return(0);
+  }
+  if(a.Milnor != b.Milnor)
+  {
+    return(0);
+  }
+  if(a.Corank != b.Corank)
+  {
+    return(0);
+  }
+  if(a.Modality != b.Modality)
+  {
+    return(0);
+  }
+  if(a.s != b.s)
+  {
+    return(0);
+  }
+  if(a.r != b.r)
+  {
+    return(0);
+  }
+  if(a.k != b.k)
+  {
+    return(0);
+  }
+  if(a.Class != b.Class)
+  {
+    return(0);
+  }
+  if(a.Series != b.Series)
+  {
+    return(0);
+  }
+  return(1);
+}
+
+static proc equalStringsArnoldClassify(string a, string b)
+"USAGE: equalStringsArnoldClassify(a, b);  a string, b string
+RETURN: int;  1 if the strings agree line by line up to leading
+              whitespace, 0 otherwise
+PURPOSE:  comparison of Arnold classify output strings, whose
+          indentation is not canonical
+NOTE: static helper for equalSingClass / equalSingSeries
+"
+{
+  list listA=decomposeInLines(a);
+  list listB=decomposeInLines(b);
+
+  if(size(listA) != size(listB))
+  {
+    return(0);
+  }
+  int numberOfLines = size(listA);
+  int i;
+  for(i=1;i<=numberOfLines;i++)
+  {
+    if(deleteSpacesAtLineBeginning(listA[i])!=deleteSpacesAtLineBeginning(listB[i]))
+    {
+      return(0);
+    }
+  }
+  return(1);
+}
+static proc decomposeInLines(string input)
+"USAGE: decomposeInLines(input);  input string
+RETURN: list of strings;  the lines of input, each including its
+         trailing newline (a final newline is appended if missing)
+NOTE: static helper for equalStringsArnoldClassify
+"
+{
+if( input[size(input)] != newline )
+{
+  input = input + newline;
+}
+int start = 1;
+int end = 1;
+list result;
+string line;
+
+int sz = size(input);
+while(start <= sz)
+{
+end = find(input, newline, start);
+    line = input[start .. end];
+    result = result + list(line);
+    start = end + 1;
+}
+  return(result);
+}
+static proc deleteSpacesAtLineBeginning(string line)
+"USAGE: deleteSpacesAtLineBeginning(line);  line string
+RETURN: string;  line with leading spaces removed
+NOTE: static helper for equalStringsArnoldClassify
+"
+{
+  int i=1;
+  while((line[i] == " ")&&(i<=size(line)))
+  {
+      i++;
+  }
+
+  if(i>size(line))
+  {
+    return("");
+  }
+  else
+  {
+    string result = line[i..size(line)];
+    return(result);
+  }
+}
+
+
+static proc equalSingSeries(singseries a, singseries b)
+"USAGE: equalSingSeries(a, b);  a singseries, b singseries
+RETURN: int;  1 if the singseries records are equal, 0 otherwise
+PURPOSE:  component-wise comparison of two singseries records
+NOTE: static helper for equal
+"
+{
+  if(!equalStringsArnoldClassify(a.Restrictions, b.Restrictions))
+  {
+    return(0);
+  }
+  if(a.MilnorCode != b.MilnorCode)
+  {
+    return(0);
+  }
+  if(a.MilnorNumber != b.MilnorNumber)
+  {
+    return(0);
+  }
+  if(a.Corank != b.Corank)
+  {
+    return(0);
+  }
+  if(a.Modality != b.Modality)
+  {
+    return(0);
+  }
+  if(a.SpecialForm != b.SpecialForm)
+  {
+    return(0);
+  }
+  if(!equalStringsArnoldClassify(a.NormalForm, b.NormalForm))
+  {
+    return(0);
+  }
+  if(a.Series != b.Series)
+  {
+    return(0);
+  }
+  return(1);
+}
+
+static proc equalArr(arr a, arr b)
+"USAGE: equalArr(a, b);  a arr, b arr
+RETURN: int;  1 if the arr records are equal, 0 otherwise
+NOTE: static helper for equal
+"
+{
+  return(equalIdeal(a.l, b.l));
+}
+
+static proc equalMultArr(multarr a, multarr b)
+"USAGE: equalMultArr(a, b);  a multarr, b multarr
+RETURN: int;  1 if the multarr records are equal, 0 otherwise
+NOTE: static helper for equal
+"
+{
+  if(a.m != b.m)
+  {
+    return(0);
+  };
+  return(equal(a.l, b.l));
+}
+
+
+static proc equalArrFlats(arrflats a, arrflats b)
+"USAGE: equalArrFlats(a, b);  a arrflats, b arrflats
+RETURN: int;  1 if the arrflats records are equal, 0 otherwise
+NOTE: static helper for equal
+"
+{
+  if(!equalArr(a.A, b.A))
+  {
+    return(0);
+  };
+  return(equalList(a.r, b.r));
+}
+
+static proc equalArrPoset(arrposet a, arrposet b)
+"USAGE: equalArrPoset(a, b);  a arrposet, b arrposet
+RETURN: int;  1 if the arrposet records are equal, 0 otherwise
+NOTE: static helper for equal
+"
+{
+  if(!equalArr(a.A, b.A))
+  {
+    return(0);
+  };
+  return(equalList(a.r, b.r));
+}
+
+static proc equalFlat(flat a, flat b)
+"USAGE: equalFlat(a, b);  a flat, b flat
+RETURN: int;  1 if the flat records are equal, 0 otherwise
+PURPOSE:  component-wise comparison of two flat records
+NOTE: static helper for equal
+"
+{
+  if(a.REL != b.REL)
+  {
+    return(0);
+  };
+  if(a.moebius != b.moebius)
+  {
+    return(0);
+  };
+  if(a.parents != b.parents)
+  {
+    return(0);
+  };
+  if(a.flag != b.flag)
+  {
+    return(0);
+  };
+  return(1);
+}
+
+
+static proc equalModule(module A, module B)
+"USAGE: equalModule(A, B);  A module, B module
+RETURN: int;  1 if the modules are equal as matrices, 0 otherwise
+NOTE: static helper for equal
+"
+{
+  return(matrix(A) == matrix(B));
+}
+
+
+static proc equalIdeal(ideal A, ideal B)
+"USAGE: equalIdeal(A, B);  A ideal, B ideal
+RETURN: int;  1 if the ideals match element-wise, 0 otherwise
+NOTE: static helper for equal;
+      TODO: implement real ideal equality
+"
+{
+  // TODO: implement real ideal equality
+  if(size(A) != size(B))
+  {
+    return(0);
+  }
+  int sz=size(A);
+  int i;
+  for(i=1;i<=sz;i++)
+  {
+    if(!equal(A[i], B[i]))
+    {
+      return(0);
+    }
+  }
+  return(1);
+}
+
+static proc equalList(list A, list B)
+"USAGE: equalList(A, B);  A list, B list
+RETURN: int;  1 if the lists match element-wise, 0 otherwise
+NOTE: static helper for equal
+"
+{
+  if(size(A) != size(B))
+  {
+    return(0);
+  }
+  int sz=size(A);
+  if(sz==0)
+  {
+    return(1)
+  }
+  int i;
+  for(i=1;i<=sz;i++)
+  {
+    if(!equal(A[i], B[i]))
+    {
+      return(0);
+    }
+  }
+  return(1);
+}
+
+static proc runBody(body, list #)
+"USAGE: runBody(body, [#]);  body proc or lambda, # optional parameters
+RETURN: none
+PURPOSE:  invokes body with the given parameters if any are supplied,
+          otherwise without parameters (so ()-> {...} lambdas need
+          not declare a dummy parameter)
+NOTE: static helper for TestCase / TestSuite;
+      WARNING: passing # from a caller with an empty argument list
+      re-wraps it into list(list()), so callers must detect the
+      empty case at the call site and pass no # at all
+"
+{
+  if(size(#) > 0)
+  {
+    body(#);
+  }
+  else
+  {
+    body();
+  }
+}
+
+static proc resetTestFlags()
+"USAGE: resetTestFlags();
+RETURN: none
+PURPOSE:  resets the per-test-case flags after a test case has
+          finished and appends its report to the suite report
+NOTE: static helper for TestCase
+"
+{
+  testResult = 1;
+  Message = "";
+  TestSuiteReport = TestSuiteReport + list(TestCaseReport);
+  TestCaseReport = list();
+}
+
+static proc appendSuiteMessage(string testName)
+"USAGE: appendSuiteMessage(testName);  testName string
+RETURN: none
+PURPOSE:  appends the result message of the last test case to the
+           suite message; on failure also clears the suite flag;
+           skipped test cases do not affect the suite verdict
+NOTE: static helper for TestCase
+"
+{
+  if(testResult == 2)
+  {
+    SuiteMessage =  SuiteMessage + newline + messageOnTestSkip(testName);
+  }
+  else
+  {
+    if(testResult == 1)
+    {
+      SuiteMessage =  SuiteMessage + newline + messageOnTestSuccess(testName);
+    }
+    else
+    {
+      SuiteMessage =  SuiteMessage + newline + messageOnTestFail(testName) + newline + Message+newline;
+      testSuiteResult = 0;
+    }
+  }
+}
+
+static proc testReport(string testName)
+"USAGE: testReport(testName);  testName string
+RETURN: string;  the report message of the last test case,
+          including the failure details on failure and the skip
+          message if the test case was skipped
+NOTE: static helper for TestCase
+"
+{
+  if(testResult == 2)
+  {
+    return(messageOnTestSkip(testName));
+  }
+  if(testResult == 1)
+  {
+    return(messageOnTestSuccess(testName));
+  }
+  return(messageOnTestFail(testName) + newline + Message);
+}
+
+static proc createCtrfFile(list testSuiteReport, string fileName)
+"USAGE: createCtrfFile(testSuiteReport, fileName);  testSuiteReport list
+        as returned internally by TestSuite, fileName string
+RETURN: none
+PURPOSE:  writes the test suite report as a CTRF (Concise Test
+          Report Format, https://ctrf.io) JSON file: a standardized
+          JSON format for test results
+NOTE: static helper for TestSuite
+"
+{
+  link linkToTest = ":w " + fileName;
+  string result = ctrfJsonString(testSuiteReport);
+  write(linkToTest, result);
+  close(linkToTest);
+}
+
+static proc ctrfJsonString(list testSuiteReport)
+"USAGE: ctrfJsonString(testSuiteReport);  testSuiteReport list
+         as returned internally by TestSuite
+RETURN: string;  the suite report serialized as a CTRF
+         (https://ctrf.io) JSON document
+PURPOSE:  builds the CTRF test report of one test suite
+NOTE: static helper for createCtrfFile
+"
+{
+  string suiteName = testSuiteReport[1];
+  list testReports = testSuiteReport[3];
+  int numberOfTests = size(testReports);
+  int passed = 0;
+  int skipped = 0;
+  int i;
+  for(i = 1; i <= numberOfTests; i++)
+  {
+    if(testReports[i][2] == 1)
+    {
+      passed++;
+    }
+    if(testReports[i][2] == 2)
+    {
+      skipped++;
+    }
+  }
+  int failed = numberOfTests - passed - skipped;
+
+  string result;
+  result = "{" + newline;
+  result = result + "  \"results\": {" + newline;
+  result = result + "    \"tool\": {\"name\": \"test.lib\"}," + newline;
+  result = result + "    \"summary\": {\"tests\": " + string(numberOfTests)
+                   + ", \"passed\": " + string(passed)
+                   + ", \"failed\": " + string(failed)
+                   + ", \"skipped\": " + string(skipped) + "}," + newline;
+  result = result + "    \"tests\": [";
+  for(i = 1; i <= numberOfTests; i++)
+  {
+    result = result + newline + "      {";
+    result = result + "\"status\": \"" + ctrfStatus(testReports[i][2]) + "\", ";
+    result = result + "\"name\": \"" + escapeJson(testReports[i][1]) + "\", ";
+    result = result + "\"suite\": \"" + escapeJson(suiteName) + "\", ";
+    result = result + "\"message\": \"" + escapeJson(testReports[i][3]) + "\"";
+    result = result + "}";
+    if(i < numberOfTests)
+    {
+      result = result + ",";
+    }
+  }
+  if(numberOfTests > 0)
+  {
+    result = result + newline + "    ";
+  }
+  result = result + "]" + newline;
+  result = result + "  }" + newline;
+  result = result + "}";
+  return(result);
+}
+
+static proc ctrfStatus(int result)
+"USAGE: ctrfStatus(result);  result int
+RETURN: string;  the CTRF status of a test: \"passed\" if result
+         is 1, \"skipped\" if result is 2, \"failed\" otherwise
+NOTE: static helper for ctrfJsonString
+"
+{
+  if(result == 1)
+  {
+    return("passed");
+  }
+  if(result == 2)
+  {
+    return("skipped");
+  }
+  return("failed");
+}
+
+static proc escapeJson(string message)
+"USAGE: escapeJson(message);  message string
+RETURN: string;  message with newlines, quotes and backslashes
+         escaped for embedding in a JSON string
+NOTE: static helper for ctrfJsonString
+"
+{
+  string result;
+  int i;
+  int sz = size(message);
+  for(i = 1; i <= sz; i++)
+  {
+    if(message[i] == newline)
+    {
+      result = result + "\\n";
+    }
+    else
+    {
+      if(message[i] == "\"")
+      {
+        result = result + "\\\"";
+      }
+      else
+      {
+        if(message[i] == "\\")
+        {
+          result = result + "\\\\";
+        }
+        else
+        {
+          result = result + message[i];
+        }
+      }
+    }
+  }
+  return(result);
+}
+
+static proc messageOnTestSuccess(string testName)
+"USAGE: messageOnTestSuccess(testName);  testName string
+RETURN: string;  the success message for a passed test case
+NOTE: static helper
+"
+{
+  return("OK:     \'" + testName + "\'");
+}
+
+static proc messageOnTestFail(string testName)
+"USAGE: messageOnTestFail(testName);  testName string
+RETURN: string;  the failure message for a failed test case
+NOTE: static helper
+"
+{
+  return("FAILED: \'" + testName + "\'");
+}
+
+static proc messageOnTestSkip(string testName)
+"USAGE: messageOnTestSkip(testName);  testName string
+RETURN: string;  the skip message for a skipped test case
+NOTE: static helper
+"
+{
+  return("SKIPPED: \'" + testName + "\'");
+}
+
+
+static proc initFlags()
+"USAGE: initFlags();
+RETURN: none
+PURPOSE:  declares and exports the global flag variables shared
+          between the test.lib procedures, then resets them
+NOTE: static helper; called once on first use
+"
+{
+  int testResult;
+  exportto(Test, testResult);
+
+  string Message;
+  exportto(Test, Message);
+
+  int testSuiteResult;
+  exportto(Test, testSuiteResult);
+
+  string SuiteMessage;
+  exportto(Test, SuiteMessage);
+
+  list TestSuiteReport;
+  exportto(Test, TestSuiteReport);
+
+  list TestCaseReport;
+  exportto(Test, TestCaseReport);
+
+  resetTestFlags();
+  resetSuiteFlags();
+}
+
+static proc resetSuiteFlags()
+"USAGE: resetSuiteFlags();
+RETURN: none
+PURPOSE:  resets the per-suite flags and clears the suite report
+NOTE: static helper for TestSuite
+"
+{
+  testSuiteResult = 1;
+  SuiteMessage = "";
+  TestSuiteReport = list();
+}
+
+static proc flagsInitialized()
+"USAGE: flagsInitialized();
+RETURN: int;  1 if the global flags were already initialized,
+              0 otherwise
+NOTE: static helper
+"
+{
+  if(defined(testSuiteResult))
+  {
+    return(1);
+  }
+  return(0);
+}
+
+static proc printTestSuiteMessage(string suiteName)
+"USAGE: printTestSuiteMessage(suiteName);  suiteName string
+RETURN: none
+PURPOSE:  prefixes the suite verdict to the accumulated suite
+          message and prints it
+NOTE: static helper for TestSuite
+"
+{
+  if(testSuiteResult == 1)
+  {
+    SuiteMessage = messageOnSuiteSuccess(suiteName) + newline + SuiteMessage;
+  }
+  else
+  {
+    SuiteMessage = messageOnSuiteFail(suiteName) + newline + SuiteMessage;
+  }
+  print(SuiteMessage);
+}
+
+static proc messageOnSuiteSuccess(string suiteName)
+"USAGE: messageOnSuiteSuccess(suiteName);  suiteName string
+RETURN: string;  the success banner for a passed suite
+NOTE: static helper
+"
+{
+  return(newline + "TEST SUITE SUCCEEDED: \"" + suiteName +"\"");
+}
+
+static proc messageOnSuiteFail(string suiteName)
+"USAGE: messageOnSuiteFail(suiteName);  suiteName string
+RETURN: string;  the failure banner for a failed suite
+NOTE: static helper
+"
+{
+  return(newline + "TEST SUITE FAILED:    \"" + suiteName + "\"");
+}
+
+static proc messageOnSuiteSkip(string suiteName)
+"USAGE: messageOnSuiteSkip(suiteName);  suiteName string
+RETURN: string;  the skip banner for a skipped suite
+NOTE: static helper
+"
+{
+  return("TEST SUITE SKIPPED:    \"" + suiteName + "\"");
+}

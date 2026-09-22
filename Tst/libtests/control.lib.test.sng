@@ -1,0 +1,263 @@
+// Test suite for control.lib, algebraic analysis tools for System
+// and Control Theory.  Run it like any Singular script, e.g.
+//   Singular control.lib.test.sng
+LIB "test.lib";
+LIB "control.lib";
+
+// helper: check that all entries of a matrix vanish
+proc isZeroMatrix(matrix M)
+{
+  return(size(simplify(ideal(M), 2)) == 0);
+}
+
+// helper: check that two ideals coincide
+proc isZeroIdeal(ideal I)
+{
+  return(size(simplify(I, 2)) == 0);
+}
+
+TestSuite("control.lib", () -> {
+
+  TestCase("rightKernel", () -> {
+    // the right kernel of the row (x,y,z) consists of the syzygies
+    // of the ideal (x,y,z); the defining property M*ker = 0 is
+    // checked, not a particular basis
+    ring r = 0,(x,y,z),dp;
+    matrix M[1][3] = x,y,z;
+    matrix K = rightKernel(M);
+    expectEqual(isZeroMatrix(M*K), 1);
+    expectEqual(colrank(K), 2);         // kernel has column rank 2
+  });
+
+  TestCase("leftKernel", () -> {
+    // left kernel of a column: vectors v with v*M = 0; the kernel
+    // has two independent generators
+    ring r = 0,(x,y,z),dp;
+    matrix M[3][1] = x,y,z;
+    matrix K = leftKernel(M);
+    expectEqual(isZeroMatrix(K*M), 1);
+    expectEqual(colrank(K), 2);         // two independent syzygies
+  });
+
+  TestCase("leftInverse", () -> {
+    // the column (1, x^2*z)^T generates a free module, so a left
+    // inverse exists and satisfies L*M = Id
+    ring r = 0,(x,z),dp;
+    matrix M[2][1] = 1,x2z;
+    matrix L = leftInverse(M);
+    expectEqual(isZeroMatrix(L*M - unitmat(1)), 1);
+  });
+
+  TestCase("leftInverseNonFree", () -> {
+    // the column (x, 0)^T has torsion: no left inverse exists and
+    // the procedure signals this by returning the zero matrix
+    ring r = 0,(x,z),dp;
+    matrix M[2][1] = x,0;
+    matrix L = leftInverse(M);
+    expectEqual(L[1,1], poly(0));
+    expectEqual(ncols(L), 1);
+  });
+
+  TestCase("rightInverse", () -> {
+    // dual to leftInverse: M*R = Id for a free row
+    ring r = 0,(x,z),dp;
+    matrix M[1][2] = 1,x2+z;
+    matrix R = rightInverse(M);
+    expectEqual(isZeroMatrix(M*R - unitmat(1)), 1);
+  });
+
+  TestCase("rightInverseNonFree", () -> {
+    // the row (0, x) generates no free module: no right inverse
+    ring r = 0,(x,z),dp;
+    matrix M[1][2] = 0,x;
+    matrix R = rightInverse(M);
+    expectEqual(R[1,1], poly(0));
+  });
+
+  TestCase("colrankDeRham", () -> {
+    // the matrix of the de Rham complex
+    //   [  0  -D3   D2]
+    //   [ D3    0  -D1]
+    //   [-D2   D1    0]
+    // has column rank 2
+    ring r = 0,(D(1..3)),dp;
+    module R = [0,-D(3),D(2)],[D(3),0,-D(1)],[-D(2),D(1),0];
+    R = transpose(R);
+    expectEqual(colrank(R), 2);
+  });
+
+  TestCase("controlNotControllable", () -> {
+    // Control1: the first obstruction Ext^1 is nonzero, hence the
+    // system is not controllable; the output reports i = 1,
+    // dimension 3 and the annihilator (s3) of the obstruction
+    def A = controlExample("Control1"); setring A;
+    list C = control(R);
+    expectEqual(C[2], 1);               // first nonzero Ext is 1
+    expectEqual(C[12], 3);              // dimension of the system
+    expectEqual(isZeroIdeal(ideal(C[10]) - s3), 1);
+  });
+
+  TestCase("controlControllableNotReflexive", () -> {
+    // Control2: Ext^1 vanishes, Ext^2 does not, so the system is
+    // controllable but not reflexive
+    def A = controlExample("Control2"); setring A;
+    list C = control(R);
+    expectEqual(C[2], 2);
+    expectEqual(C[6], 3);               // dimension of the system
+  });
+
+  TestCase("controlFlat", () -> {
+    // TwoPendula: all Ext vanish, the system is strongly
+    // controllable (flat); the genericity list records that the
+    // parameters m1,g,L1,m2,L2 are involved, with the single
+    // nondegeneracy condition L1-L2
+    def A = controlExample("TwoPendula"); setring A;
+    list C = control(R);
+    expectEqual(C[2], -1);              // "all Ext are zero"
+    expectEqual(C[8], 1);              // dimension of the system
+    expectEqual(C[10][2], "L1-L2");    // nondegeneracy condition
+  });
+
+  TestCase("controlDimAgreesWithControl", () -> {
+    // on the WindTunnel example (full row rank) the cheap
+    // dimension-based analysis gives the same verdict as the
+    // Ext-based one
+    def A = controlExample("WindTunnel"); setring A;
+    list C1 = control(R);
+    list C2 = controlDim(R);
+    expectEqual(C2[2], C1[2]);
+    expectEqual(C2[6], C1[6]);
+  });
+
+  TestCase("controlDimRejectsNonFullRowRank", () -> {
+    // Control2 does not have full row rank: controlDim refuses and
+    // returns an error message instead of an output list
+    def A = controlExample("Control2"); setring A;
+    def C = controlDim(R);              // string, not a list
+    expectEqual(typeof(C), "string");
+    expectEqual(C, "controlDim cannot be applied, since R does not have full row rank");
+  });
+
+  TestCase("autonomNotAutonomous", () -> {
+    // TwoPendula is not autonomous (the system has inputs):
+    // autonom reports i = 0 and returns the kernel representation
+    // of the controllable part together with its column rank
+    def A = controlExample("TwoPendula"); setring A;
+    list A1 = autonom(R);
+    expectEqual(A1[2], 0);
+    expectEqual(A1[7], 3);              // column rank of RC
+    expectEqual(A1[9], 1);              // dimension of the system
+  });
+
+  TestCase("autonomDimAgreesWithAutonom", () -> {
+    // Cauchy2: both analyses agree on the verdict i = 2
+    // (overdetermined, not strongly autonomous) and the dimension
+    def A = controlExample("Cauchy2"); setring A;
+    list A1 = autonom(R);
+    list A2 = autonomDim(R);
+    expectEqual(A2[2], A1[2]);
+    expectEqual(A2[2], 2);
+    expectEqual(A2[size(A2)], A1[size(A1)]);
+  });
+
+  TestCase("genericityNoParameters", () -> {
+    // without parameters there is nothing to be generic about
+    ring r = 0,(x,y),dp;
+    module M = [x,y],[x2,y2];
+    module SM = std(M);
+    matrix T = lift(M,SM);
+    expectEqual(genericity(T), "-");
+  });
+
+  TestCase("genericityTwoPendula", () -> {
+    // for TwoPendula the lift computation divides by the
+    // parameters; the collected nondegeneracy condition is L1-L2
+    def A = controlExample("TwoPendula"); setring A;
+    module SR = std(R);
+    matrix T = lift(R,SR);
+    list G = genericity(T);
+    expectEqual(G[1], "m1,g,L1,m2,L2"); // monomials assumed nonzero
+    expectEqual(G[2], "L1-L2");         // the single genuine condition
+  });
+
+  TestCase("findTorsionFlexibleRod", () -> {
+    // for the FlexibleRod the torsion submodule of the system
+    // module is annihilated by D1; its explicit generator is the
+    // second unit vector of the presentation
+    def A = controlExample("FlexibleRod"); setring A;
+    module Tr = findTorsion(R, ideal(D1));
+    expectEqual(ncols(Tr), 1);
+    expectEqual(Tr[1] == gen(2), 1);
+  });
+
+  TestCase("iostruct", () -> {
+    // a square system of full rank: both components are chosen as
+    // outputs, hence P is the system matrix itself and Q is the
+    // zero matrix (no inputs are left)
+    ring r = 0,(x,y),dp;
+    module R = [x,y],[y,x+y];
+    R = transpose(R);
+    list IO = iostruct(R);
+    expectEqual(size(IO), 4);
+    expectEqual(typeof(IO[2]), "intvec");
+    expectEqual(isZeroMatrix(IO[4]), 1); // no inputs left
+    expectEqual(isZeroMatrix(matrix(IO[3]) - matrix(R)), 1);
+  });
+
+  TestCase("iostructAntenna", () -> {
+    // the Antenna example: 6 outputs and 3 inputs
+    def A = controlExample("Antenna"); setring A;
+    list IO = iostruct(R);
+    expectEqual(nrows(IO[3]), 6);       // P has 6 rows...
+    expectEqual(ncols(IO[4]), 3);       // ...and 3 columns remain as inputs
+  });
+
+  TestCase("canonize", () -> {
+    // canonize replaces the modules in the output of control by
+    // their reduced Groebner bases; the verdict and all other
+    // entries are kept
+    def A = controlExample("TwoPendula"); setring A;
+    list C = control(R);
+    list CC = canonize(C);
+    expectEqual(size(CC), size(C));
+    expectEqual(CC[2], -1);
+    expectEqual(attrib(CC[4],"isSB"), 1); // now a Groebner basis
+  });
+
+  TestCase("oldsmithDiagonal", () -> {
+    // a diagonal matrix is its own Smith normal form; the
+    // transformation matrices are unimodular and multiply back
+    // to it
+    ring r = 0,x,dp;
+    option(redSB); option(redTail);
+    module M = [x,0,0],[0,x2,0],[0,0,x3];
+    list P = oldsmith(M);
+    expectEqual(P[2], 3);               // rank
+    expectEqual(isZeroMatrix(P[3]*matrix(M)*P[4] - P[1]), 1);
+    expectEqual(det(P[3]) - 1 == 0, 1);  // U unimodular
+    option(none);
+  });
+
+  TestCase("oldsmithRefusesPIDviolation", () -> {
+    // over two variables no Smith form exists: oldsmith refuses and
+    // returns an error message instead of an output list
+    ring r = 0,(x,y),dp;
+    module M = [x,y];
+    def P = oldsmith(M);                // string, not a list
+    expectEqual(typeof(P), "string");
+    expectEqual(P, "The Smith-Form only exists for principal ideal domains");
+  });
+
+  TestCase("controlExampleDatabase", () -> {
+    // every named example returns a ring carrying the transposed
+    // system matrix R
+    def A = controlExample("TwoPendula"); setring A;
+    expectEqual(typeof(R), "module");
+    expectEqual(nrows(R), 3);           // three equations of motion
+    expectEqual(ncols(R), 4);           // in four unknowns
+    def B = controlExample("Cauchy2"); setring B;
+    expectEqual(nrows(R), 4);           // four Cauchy equations
+    expectEqual(ncols(R), 2);           // in two unknowns
+  });
+});
+$
