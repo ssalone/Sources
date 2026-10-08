@@ -193,11 +193,11 @@ NOTE:     constants are considered symmetric
   list l2 = ringlist(basering)[2];
   for (ii = 1; ii <= nV; ii++)
   {
-   l2[size(l2)+1] = "c@("+string(ii)+")";
+    l2[size(l2)+1] = "c@("+string(ii)+")";
   }
-    for (ii = 1; ii <= nV; ii++)
+  for (ii = 1; ii <= nV; ii++)
   {
-   l2[size(l2)+1] = "A@("+string(ii)+")";
+    l2[size(l2)+1] = "A@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l2, "dp", "no_minpoly");
   ideal V=fetch(br@,V);
@@ -610,17 +610,17 @@ EXAMPLE:  example chAll; shows an example
 NOTE:     makes sense only for a list of polynomials
 "
 {
-    list rez; // to be the result
-    rez = powSumSym(c, #); // get the sums of powers of the Chern roots
-    int n = size(rez);
-    bigint fct=1;
-    int i;
-    for(i=1;i<=n;i++) // get the terms of the Chern character
-    {
-      fct=fct*i;
-      rez[i]=rez[i]/fct;
-    }
-    return(rez); // return the result
+  list rez; // to be the result
+  rez = powSumSym(c, #); // get the sums of powers of the Chern roots
+  int n = size(rez);
+  bigint fct=1;
+  int i;
+  for(i=1;i<=n;i++) // get the terms of the Chern character
+  {
+    fct=fct*i;
+    rez[i]=rez[i]/fct;
+  }
+  return(rez); // return the result
 }
 example
 {
@@ -722,7 +722,7 @@ NOTE:     uses the elimination and is extremely inefficient,
     l3 = l3+ ringlist(basering)[2];
     for (int ii = 1; ii <= n; ii++)
     {
-     l3[size(l3)+1] = "a@("+string(ii)+")";
+      l3[size(l3)+1] = "a@("+string(ii)+")";
     }
     ring r@ = create_ring(ring_list(basering)[1], l3, "lp", "no_minpoly");
     // define the corresponding inclusion of rings: imap
@@ -1059,11 +1059,11 @@ NOTE:     makes sense only for (lists of) polynomials;
   l4 = l4+ ringlist(basering)[2];
   for (ii = 1; ii <= r; ii++)
   {
-   l4[size(l4)+1] = "a@("+string(ii)+")";
+    l4[size(l4)+1] = "a@("+string(ii)+")";
   }
   for (ii = 1; ii <= R; ii++)
   {
-   l4[size(l4)+1] = "b@("+string(ii)+")";
+    l4[size(l4)+1] = "b@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l4, "lp", "no_minpoly");
   // define the corresponding inclusion of rings: imap
@@ -1153,11 +1153,11 @@ NOTE:     Implementation of the formula of Lascoux, the Schur polynomials are co
   l5[size(l5)+1] = "t@";
   for (ii = 1; ii <= r; ii++)
   {
-   l5[size(l5)+1] = "c@("+string(ii)+")";
+    l5[size(l5)+1] = "c@("+string(ii)+")";
   }
   for (ii = 1; ii <= R; ii++)
   {
-   l5[size(l5)+1] = "C@("+string(ii)+")";
+    l5[size(l5)+1] = "C@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l5, "dp", "no_minpoly");
   list c, C;
@@ -1242,7 +1242,7 @@ NOTE:     Implementation of the formula of Lascoux, the Schur polynomials are co
     {
       TU=PU[j]; // for each of them
       rez=rez+IJcoef(T, TU)* SchurCh(TU, c) *ST; // add the corresponding term to the result
-     }
+    }
   }
   return(rez); // return the result
 }
@@ -1297,11 +1297,11 @@ NOTE:     Implementation of the formula of Manivel
   l6[size(l6)+1] = "t@";
   for (ii = 1; ii <= r; ii++)
   {
-   l6[size(l6)+1] = "c@("+string(ii)+")";
+    l6[size(l6)+1] = "c@("+string(ii)+")";
   }
   for (ii = 1; ii <= R; ii++)
   {
-   l6[size(l6)+1] = "C@("+string(ii)+")";
+    l6[size(l6)+1] = "C@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l6, "dp", "no_minpoly");
   list c, C;
@@ -1610,7 +1610,7 @@ NOTE:     for the second symmetric power chSymm2L(...) could be faster
   // the higher classes are assumed to be zero and the list is appended by zeroes up to length r
   c=append_by_zeroes(r, c);
   // if the length of the list of the Chern classes is greater than the rank
-    c=c[1..r]; // throw away the redundant data
+  c=c[1..r]; // throw away the redundant data
   //-----------------------------------
   // from now on the length of c is r>0
   //-----------------------------------
@@ -1643,7 +1643,7 @@ NOTE:     for the second symmetric power chSymm2L(...) could be faster
   l7 = l7+ ringlist(basering)[2];
   for (ii = 1; ii <= r; ii++)
   {
-   l7[size(l7)+1] = "a@("+string(ii)+")";
+    l7[size(l7)+1] = "a@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l7, "lp", "no_minpoly");
   // define the corresponding inclusion of rings: imap
@@ -1775,7 +1775,7 @@ NOTE:     Implementation of the formula of Lascoux, the Schur polynomials are co
   l8[size(l8)+1] = "t@";
   for (int ii = 1; ii <= r; ii++)
   {
-   l8[size(l8)+1] = "c@("+string(ii)+")";
+    l8[size(l8)+1] = "c@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l8, "dp", "no_minpoly");
   list c;
@@ -1916,7 +1916,7 @@ NOTE:     for the second exterior power chWedge2L(...) could be faster
   // the higher classes are assumed to be zero and the list is appended by zeroes up to length r
   c=append_by_zeroes(r, c);
   // if the length of the list of the Chern classes is greater than the rank
-    c=c[1..r]; // throw away the redundant data
+  c=c[1..r]; // throw away the redundant data
   //------------------------------------------
   // from now on the length of c is r > 0
   //------------------------------------------
@@ -1946,7 +1946,7 @@ NOTE:     for the second exterior power chWedge2L(...) could be faster
   l9 = l9+ ringlist(basering)[2];
   for (int ii = 1; ii <= r; ii++)
   {
-   l9[size(l9)+1] = "a@("+string(ii)+")";
+    l9[size(l9)+1] = "a@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l9, "lp", "no_minpoly");
   // define the corresponding inclusion of rings: imap
@@ -2080,7 +2080,7 @@ NOTE:     Implementation of the formula of Lascoux, the Schur polynomials are co
   l10[size(l10)+1] = "t@";
   for (int ii = 1; ii <= r; ii++)
   {
-   l10[size(l10)+1] = "c@("+string(ii)+")";
+    l10[size(l10)+1] = "c@("+string(ii)+")";
   }
   ring r@ = create_ring(ring_list(basering)[1], l10, "dp", "no_minpoly");
   list c;
@@ -2207,7 +2207,7 @@ NOTE:     returns an empty list if l is empty
     l11[size(l11)+1] = "a@";
     for (int ii = 1; ii <= n; ii++)
     {
-     l11[size(l11)+1] = "c@("+string(ii)+")";
+      l11[size(l11)+1] = "c@("+string(ii)+")";
     }
     ring r@ = create_ring(ring_list(basering)[1], l11, "dp", "no_minpoly");
     // define the corresponding inclusion of rings: imap
@@ -2295,7 +2295,7 @@ NOTE:     returns an empty list if l is empty,
     l12 = l12+ ringlist(basering)[2];
     for (int ii = 1; ii <= n; ii++)
     {
-     l12[size(l12)+1] = "a@("+string(ii)+")";
+      l12[size(l12)+1] = "a@("+string(ii)+")";
     }
     ring r@ = create_ring(ring_list(basering)[1], l12, "lp", "no_minpoly");
     // define the corresponding inclusion of rings: imap
@@ -2399,7 +2399,7 @@ NOTE:
   int i;
   for(i=1;i<=n+1;i++)
   {
-  rez[i]=rez[i]/factorial(i-1);
+    rez[i]=rez[i]/factorial(i-1);
   }
   return(rez);
 }
@@ -2424,7 +2424,7 @@ NOTE:
   int i;
   for(i=1;i<=n+1;i++)
   {
-  rez[i]=( rez[i]/factorial(i-1) )* f^(i-1);
+    rez[i]=( rez[i]/factorial(i-1) )* f^(i-1);
   }
   return(rez);
 }
@@ -2571,7 +2571,7 @@ NOTE:
     int i;
     for(i=0;i<=n;i++)
     {
-     rez=rez+list(C[i+1, 1]);
+      rez=rez+list(C[i+1, 1]);
     }
     setring br@; // come back to the initial base ring
     map FF= r@, 0 ; // define the specialization homomorphism t@=0
@@ -3182,7 +3182,7 @@ NOTE:
   list l13 = ringlist(basering)[2];
   for (int ii = 1; ii <= sz; ii++)
   {
-   l13[size(l13)+1] = "t@("+string(ii)+")";
+    l13[size(l13)+1] = "t@("+string(ii)+")";
   }
   l13[size(l13)+1] = "u@";
   ring r@ = create_ring(ring_list(basering)[1], l13, "dp", "no_minpoly");
@@ -3281,7 +3281,7 @@ NOTE:
   list l14 = ringlist(basering)[2];
   for (int ii = 1; ii <= sz; ii++)
   {
-   l14[size(l14)+1] = "t@("+string(ii)+")";
+    l14[size(l14)+1] = "t@("+string(ii)+")";
   }
   l14[size(l14)+1] = "u@";
   ring r@ = create_ring(ring_list(basering)[1], l14, "dp", "no_minpoly");
@@ -3858,7 +3858,7 @@ NOTE:
     //h=contentPolyM(DT, L, e)*contentPoly(T, M, f);
     rez=rez+P[i][1]* contentPoly(DT, L, e)*contentPoly(T, M, f)/hook(DT);
   }
- return(rez);
+  return(rez);
 }
 example
 {
@@ -3998,7 +3998,7 @@ NOTE:
   list l15 = ringlist(basering)[2];
   for (int ii = 1; ii <= sz; ii++)
   {
-   l15[size(l15)+1] = "t@("+string(ii)+")";
+    l15[size(l15)+1] = "t@("+string(ii)+")";
   }
   l15[size(l15)+1] = "u@";
   ring r@ = create_ring(ring_list(basering)[1], l15, "dp", "no_minpoly");

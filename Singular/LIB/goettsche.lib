@@ -442,7 +442,7 @@ NOTE:     zero is returned if n<0 or b is not a list of non-negative integers
   ideal I=std(t@^(n+1));
   for(i=0;i<d;i++)
   {
-      rez=NF(rez*generFactor( z@^i*t@, 1, i, b[i+1], n), I);
+    rez=NF(rez*generFactor( z@^i*t@, 1, i, b[i+1], n), I);
   }
   setring br@; // come back to the initial base ring
   // define the specialization homomorphism z@=z, t@=t
@@ -544,7 +544,7 @@ NOTE:     an empty list is returned if n<0 or b is not a list of non-negative in
   ideal I=std(t@^(n+1));
   for(i=0;i<d;i++)
   {
-      rez=NF(rez*generFactor( z@^i*t@, 1, i, b[i+1], n), I);
+    rez=NF(rez*generFactor( z@^i*t@, 1, i, b[i+1], n), I);
   }
   rez= coeffs(rez, t@)[n+1, 1]; // take the coefficient of the n-th power of t@
   matrix CF=coeffs(rez, z@); // take the matrix of the coefficients

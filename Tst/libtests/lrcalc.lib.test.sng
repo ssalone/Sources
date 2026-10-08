@@ -17,8 +17,8 @@ LIB "lrcalc.lib";
 // probe: do the external programs exist and actually run?
 int lrcalcAvailable =
   (system("sh",
-     "lrcalc coef 1 - 1 - 1 >/dev/null 2>&1 && schubmult 1 - 1 >/dev/null 2>&1")
-   == 0);
+  "lrcalc coef 1 - 1 - 1 >/dev/null 2>&1 && schubmult 1 - 1 >/dev/null 2>&1")
+  == 0);
 
 // helpers shared by the test cases below: search the result lists of
 // LRskew / LRmult / LRschubmult (entries are list(coefficient, partition))
@@ -39,7 +39,7 @@ proc hasTriple(list rez, int c, list p, list q)
   for (i = 1; i <= size(rez); i++)
   {
     if (int(rez[i][1]) == c && equal(rez[i][2], p)
-        && equal(rez[i][3], q))
+      && equal(rez[i][3], q))
     {
       return(1);
     }

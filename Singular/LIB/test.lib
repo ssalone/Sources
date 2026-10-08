@@ -44,7 +44,7 @@ NOTE: the test cases should be included in the body;
 }
 example
 {
-"EXAMPLE:";
+  "EXAMPLE:";
 "TestSuite(\"Example Test Suite\", args -> {
   TestCase(\"Example Test Case\", args -> {
     ring r = 0, x, dp;
@@ -63,25 +63,25 @@ example
       expectComparedBy(deg(f), 5, customComparator);
     });
 });";
-TestSuite("Example Test Suite", args -> {
-  TestCase("Example Test Case", args -> {
-    ring r = 0, x, dp;
-    poly f = x^3+x+1;
+  TestSuite("Example Test Suite", args -> {
+    TestCase("Example Test Case", args -> {
+      ring r = 0, x, dp;
+      poly f = x^3+x+1;
 
-    expectEqual(deg(f), 3);
+      expectEqual(deg(f), 3);
+    });
+
+    TestCase("Example Test Case with custom comparator", args -> {
+      ring r = 0, x, dp;
+      poly f = x^3+x+1;
+
+      proc customComparator(int a, int b)
+      {
+        return(a < b);
+      }
+      expectComparedBy(deg(f), 5, customComparator);
+    });
   });
-
-  TestCase("Example Test Case with custom comparator", args -> {
-    ring r = 0, x, dp;
-    poly f = x^3+x+1;
-
-    proc customComparator(int a, int b)
-    {
-      return(a < b);
-    }
-    expectComparedBy(deg(f), 5, customComparator);
-  });
-});
 }
 
 proc xTestSuite(string suiteName, proc body, list #)
@@ -302,12 +302,12 @@ PURPOSE:  extracts the procedure name from its printed
 NOTE: static helper
 "
 {
-   string printOutput = print(procedure);
-   int sz = size(printOutput);
-   int positionProcName = find(printOutput, "procname : " ) + size("procname : ");
-   int positionNextLine = find(printOutput, "//", positionProcName)-2;
-   string result = printOutput[positionProcName .. positionNextLine];
-   return(result);
+  string printOutput = print(procedure);
+  int sz = size(printOutput);
+  int positionProcName = find(printOutput, "procname : " ) + size("procname : ");
+  int positionNextLine = find(printOutput, "//", positionProcName)-2;
+  string result = printOutput[positionProcName .. positionNextLine];
+  return(result);
 }
 
 static proc messageOnComparedByFail(a, b, string comparatorName)
@@ -318,7 +318,7 @@ NOTE: static helper for expectComparedBy
 "
 {
   return("* failed while comparing " +
-  string(typeof(a), newline, print(a), newline, "and ", typeof(b), newline, print(b), newline, "by '", comparatorName, "'", newline));
+    string(typeof(a), newline, print(a), newline, "and ", typeof(b), newline, print(b), newline, "by '", comparatorName, "'", newline));
 }
 
 static proc messageOnEqualFail(a, b)
@@ -426,23 +426,23 @@ RETURN: list of strings;  the lines of input, each including its
 NOTE: static helper for equalStringsArnoldClassify
 "
 {
-if( input[size(input)] != newline )
-{
-  input = input + newline;
-}
-int start = 1;
-int end = 1;
-list result;
-string line;
+  if( input[size(input)] != newline )
+  {
+    input = input + newline;
+  }
+  int start = 1;
+  int end = 1;
+  list result;
+  string line;
 
-int sz = size(input);
-while(start <= sz)
-{
-end = find(input, newline, start);
+  int sz = size(input);
+  while(start <= sz)
+  {
+    end = find(input, newline, start);
     line = input[start .. end];
     result = result + list(line);
     start = end + 1;
-}
+  }
   return(result);
 }
 static proc deleteSpacesAtLineBeginning(string line)
@@ -454,7 +454,7 @@ NOTE: static helper for equalStringsArnoldClassify
   int i=1;
   while((line[i] == " ")&&(i<=size(line)))
   {
-      i++;
+    i++;
   }
 
   if(i>size(line))
@@ -1018,9 +1018,9 @@ NOTE: static helper for createCtrfFile
   result = result + "  \"results\": {" + newline;
   result = result + "    \"tool\": {\"name\": \"test.lib\"}," + newline;
   result = result + "    \"summary\": {\"tests\": " + string(numberOfTests)
-                   + ", \"passed\": " + string(passed)
-                   + ", \"failed\": " + string(failed)
-                   + ", \"skipped\": " + string(skipped) + "}," + newline;
+  + ", \"passed\": " + string(passed)
+  + ", \"failed\": " + string(failed)
+  + ", \"skipped\": " + string(skipped) + "}," + newline;
   result = result + "    \"tests\": [";
   for(i = 1; i <= numberOfTests; i++)
   {
