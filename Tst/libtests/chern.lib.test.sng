@@ -15,8 +15,8 @@ LIB "chern.lib";
 // probe: do the external programs exist and actually run?
 int lrcalcAvailable =
   (system("sh",
-     "lrcalc coef 1 - 1 - 1 >/dev/null 2>&1 && schubmult 1 - 1 >/dev/null 2>&1")
-   == 0);
+  "lrcalc coef 1 - 1 - 1 >/dev/null 2>&1 && schubmult 1 - 1 >/dev/null 2>&1")
+  == 0);
 
 TestSuite("chern.lib", () -> {
 
@@ -558,7 +558,7 @@ TestSuite("chern.lib", () -> {
     list rez = Bern(9);
     expectEqual(rez,
       list(number(1), 1/2, 1/6, number(0), -1/30, number(0),
-        1/42, number(0), -1/30, number(0)));
+      1/42, number(0), -1/30, number(0)));
   });
 
   TestCase("tdCf", () -> {

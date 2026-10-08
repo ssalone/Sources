@@ -202,7 +202,7 @@ TestSuite("involut.lib", () -> {
     setring Y;
     // hybrid naming: short names up to 9, underscores from 10 on
     expectEqual(varstr(basering),
-                "a11,a22,a33,a44,a55,a66,a77,a88,a99,@_10_10,@_11_11");
+      "a11,a22,a33,a44,a55,a66,a77,a88,a99,@_10_10,@_11_11");
     expectEqual(size(L), 1024);         // 2^10 independent sign choices
     // the first component is the classical involution of the
     // Weyl pair, extended by the identity:
