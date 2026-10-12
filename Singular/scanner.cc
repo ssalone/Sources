@@ -1390,9 +1390,30 @@ YY_RULE_SETUP
                            /*if (*yytext == '\n') REJECT;*/
                            REGISTER char ch= *yytext;
                            if (ch == '(')
-                           {
-                             /* peek ahead: (args)-> { */
-                             char argbuf[1024];
+                            {
+                              /* Fast filter: peek one char after '('.
+                                 Lambda params can only start with a letter,
+                                 '_', '#', ')' (empty params), or whitespace.
+                                 Anything else (digit, operator, quote, etc.)
+                                 means this is definitely not a lambda —
+                                 skip the full peek-ahead entirely. */
+                              int c_peek = yyinput();
+                              if (c_peek != EOF)
+                              {
+                                unput(c_peek);
+                                if (c_peek != ')' && c_peek != '#'
+                                    && c_peek != '_'
+                                    && c_peek != ' ' && c_peek != '\t'
+                                    && c_peek != '\n' && c_peek != '\r'
+                                    && !((c_peek >= 'a' && c_peek <= 'z')
+                                         || (c_peek >= 'A' && c_peek <= 'Z')))
+                                {
+                                  lvalp->i = ch;
+                                  return ch;
+                                }
+                              }
+                              /* peek ahead: (args)-> { */
+                              char argbuf[1024];
                              int arglen = 0;
                              int nest = 1;
                              int c2;
